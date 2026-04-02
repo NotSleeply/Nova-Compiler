@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <variant>
 #include <memory>
+#include <cstdint>
 
 namespace nova {
 

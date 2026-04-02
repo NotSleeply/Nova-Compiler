@@ -528,34 +528,18 @@ public:
  */
 class ForStmt : public Statement {
 public:
-    StmtPtr initializer;   // Can be nullptr
+    std::variant<std::monostate, StmtPtr, DeclPtr> initializer;   // Can be nullptr, statement or declaration
     ExprPtr condition;     // Can be nullptr
     ExprPtr increment;     // Can be nullptr
     StmtPtr body;
     
-    ForStmt(StmtPtr init, ExprPtr cond, ExprPtr incr, StmtPtr b, 
+    ForStmt(std::variant<std::monostate, StmtPtr, DeclPtr> init, 
+            ExprPtr cond, ExprPtr incr, StmtPtr b, 
             const Location& loc)
         : Statement(ASTNodeType::FOR_STMT, loc), 
           initializer(init), condition(cond), increment(incr), body(b) {}
     
-    std::string toString(int indent = 0) const override {
-        std::string result = std::string(indent, ' ') + "ForStmt:\n";
-        if (initializer) {
-            result += std::string(indent + 2, ' ') + "Initializer:\n";
-            result += initializer->toString(indent + 4) + "\n";
-        }
-        if (condition) {
-            result += std::string(indent + 2, ' ') + "Condition:\n";
-            result += condition->toString(indent + 4) + "\n";
-        }
-        if (increment) {
-            result += std::string(indent + 2, ' ') + "Increment:\n";
-            result += increment->toString(indent + 4) + "\n";
-        }
-        result += std::string(indent + 2, ' ') + "Body:\n";
-        result += body->toString(indent + 4);
-        return result;
-    }
+    std::string toString(int indent = 0) const override;
 };
 
 /**
@@ -741,6 +725,30 @@ std::shared_ptr<T> make(Args&&... args) {
 }
 
 } // namespace ast
+
+// Inline implementations that need full type definitions
+inline std::string ForStmt::toString(int indent) const {
+    std::string result = std::string(indent, ' ') + "ForStmt:\n";
+    if (!std::holds_alternative<std::monostate>(initializer)) {
+        result += std::string(indent + 2, ' ') + "Initializer:\n";
+        if (std::holds_alternative<StmtPtr>(initializer)) {
+            result += std::get<StmtPtr>(initializer)->toString(indent + 4) + "\n";
+        } else if (std::holds_alternative<DeclPtr>(initializer)) {
+            result += std::get<DeclPtr>(initializer)->toString(indent + 4) + "\n";
+        }
+    }
+    if (condition) {
+        result += std::string(indent + 2, ' ') + "Condition:\n";
+        result += condition->toString(indent + 4) + "\n";
+    }
+    if (increment) {
+        result += std::string(indent + 2, ' ') + "Increment:\n";
+        result += increment->toString(indent + 4) + "\n";
+    }
+    result += std::string(indent + 2, ' ') + "Body:\n";
+    result += body->toString(indent + 4);
+    return result;
+}
 
 } // namespace nova
 

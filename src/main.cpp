@@ -139,6 +139,11 @@ int runParser(const std::string& source, const std::string& filename) {
 }
 
 /**
+ * @brief Run semantic analysis and print results
+ */
+int runSemantic(const std::string& source, const std::string& filename);
+
+/**
  * @brief Full compilation pipeline
  */
 int compile(const std::string& source, const std::string& filename) {
