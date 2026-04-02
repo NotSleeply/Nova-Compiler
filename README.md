@@ -1,110 +1,110 @@
-# Nova Compiler
+# Nova 编译器
 
 <div align="center">
 
 ![Nova Compiler Logo](docs/images/logo.png)
 
-**A modern compiler frontend framework built from scratch**
+**一个从零构建的现代编译器前端框架**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/NotSleeply/Nova-Compiler)
 [![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](https://github.com/NotSleeply/Nova-Compiler/releases)
 
-[Features](#features) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Contributing](#contributing) • [Roadmap](#roadmap)
+[特性](#特性) • [快速开始](#快速开始) • [文档](#文档) • [贡献指南](#贡献指南) • [路线图](#路线图)
 
 </div>
 
 ---
 
-## Overview
+## 概述
 
-Nova Compiler is a **compiler frontend framework** built entirely from scratch in modern C++. It demonstrates the fundamental concepts of compiler construction, including lexical analysis, parsing, abstract syntax trees, and semantic analysis.
+Nova 编译器是一个使用现代 C++ 从零构建的**编译器前端框架**。它演示了编译器构造的基本概念，包括词法分析、语法分析、抽象语法树和语义分析。
 
-### Why Nova?
+### 为什么选择 Nova？
 
-- **Educational** - Clean, well-documented code perfect for learning compiler construction
-- **Modern** - Uses C++17 features and modern software engineering practices
-- **Extensible** - Modular architecture designed for easy extension and modification
-- **Practical** - Implements real-world compiler patterns and techniques
-
----
-
-## Features
-
-### Current Features (v0.1.0)
-
-- ✅ **Lexer** - Full lexical analysis with token generation
-  - Integer, float, string, char, and boolean literals
-  - Identifiers and keywords
-  - Operators and delimiters
-  - Comments (single-line and multi-line)
-  - Escape sequences in strings
-  - Source location tracking
-
-- ✅ **Parser** - Recursive descent parser
-  - Expression parsing with proper precedence
-  - Statement parsing (if, while, for, return, block)
-  - Declaration parsing (functions, variables, structs)
-  - Error recovery and synchronization
-  - Complete AST generation
-
-- ✅ **AST** - Comprehensive Abstract Syntax Tree
-  - Type system (primitives, named types, arrays)
-  - Expression nodes (literals, binary, unary, call, etc.)
-  - Statement nodes (control flow, blocks, etc.)
-  - Declaration nodes (functions, variables, structs)
-  - Visitor pattern support (planned)
-
-- 🚧 **Semantic Analysis** - In development
-- 🚧 **IR Generation** - Planned
-- 🚧 **Code Generation** - Planned
+- **教育性** - 清晰、文档完善的代码，非常适合学习编译器构造
+- **现代化** - 使用 C++17 特性和现代软件工程实践
+- **可扩展** - 模块化架构设计，便于扩展和修改
+- **实用性** - 实现了真实世界的编译器模式和技术
 
 ---
 
-## Quick Start
+## 特性
 
-### Prerequisites
+### 当前特性 (v0.1.0)
 
-- **Compiler**: GCC 9+ or Clang 10+ (C++17 support required)
-- **Make**: GNU Make or compatible
-- **OS**: Linux, macOS, or Windows (with MinGW/Cygwin)
+- ✅ **词法分析器** - 完整的词法分析与词元生成
+  - 整型、浮点、字符串、字符和布尔字面量
+  - 标识符和关键字
+  - 运算符和分隔符
+  - 注释（单行和多行）
+  - 字符串中的转义序列
+  - 源码位置跟踪
 
-### Build
+- ✅ **语法分析器** - 递归下降解析器
+  - 正确优先级的表达式解析
+  - 语句解析（if、while、for、return、代码块）
+  - 声明解析（函数、变量、结构体）
+  - 错误恢复和同步
+  - 完整的 AST 生成
+
+- ✅ **AST** - 全面的抽象语法树
+  - 类型系统（基本类型、命名类型、数组）
+  - 表达式节点（字面量、二元、一元、调用等）
+  - 语句节点（控制流、代码块等）
+  - 声明节点（函数、变量、结构体）
+  - 访问者模式支持（计划中）
+
+- 🚧 **语义分析** - 开发中
+- 🚧 **IR 生成** - 计划中
+- 🚧 **代码生成** - 计划中
+
+---
+
+## 快速开始
+
+### 前置要求
+
+- **编译器**: GCC 9+ 或 Clang 10+（需要 C++17 支持）
+- **Make**: GNU Make 或兼容工具
+- **操作系统**: Linux、macOS 或 Windows（使用 MinGW/Cygwin）
+
+### 构建
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/NotSleeply/Nova-Compiler.git
 cd Nova-Compiler
 
-# Build the compiler
+# 构建编译器
 make
 
-# Run with an example
+# 运行示例
 ./bin/novac examples/hello.nv
 ```
 
-### Usage
+### 使用方法
 
 ```bash
-# Full compilation
+# 完整编译
 ./bin/novac source.nv
 
-# Run lexer only (print tokens)
+# 仅运行词法分析器（打印词元）
 ./bin/novac --lex source.nv
 
-# Run parser only (print AST)
+# 仅运行语法分析器（打印 AST）
 ./bin/novac --parse source.nv
 
-# Show help
+# 显示帮助
 ./bin/novac --help
 ```
 
 ---
 
-## Example
+## 示例
 
-Input (`hello.nv`):
+输入 (`hello.nv`):
 ```nova
 fn greet(name: string) -> string {
     return "Hello, " + name + "!";
@@ -118,7 +118,7 @@ fn main() -> void {
 }
 ```
 
-Lexer Output:
+词法分析器输出:
 ```
 KW_FN 'fn' at hello.nv:1:1
 IDENTIFIER 'greet' at hello.nv:1:4
@@ -129,7 +129,7 @@ KW_STRING 'string' at hello.nv:1:16
 ...
 ```
 
-Parser Output:
+语法分析器输出:
 ```
 Program:
   FunctionDecl: greet
@@ -144,85 +144,85 @@ Program:
 
 ---
 
-## Architecture
+## 架构
 
 ```
-Nova Compiler
-├── Lexer (Lexical Analysis)
-│   ├── Character stream → Token stream
-│   ├── Keyword recognition
-│   └── Error reporting
+Nova 编译器
+├── Lexer (词法分析)
+│   ├── 字符流 → 词元流
+│   ├── 关键字识别
+│   └── 错误报告
 │
-├── Parser (Syntax Analysis)
-│   ├── Token stream → AST
-│   ├── Recursive descent
-│   └── Error recovery
+├── Parser (语法分析)
+│   ├── 词元流 → AST
+│   ├── 递归下降
+│   └── 错误恢复
 │
-├── AST (Abstract Syntax Tree)
-│   ├── Expression nodes
-│   ├── Statement nodes
-│   └── Declaration nodes
+├── AST (抽象语法树)
+│   ├── 表达式节点
+│   ├── 语句节点
+│   └── 声明节点
 │
-├── Semantic Analysis (planned)
-│   ├── Type checking
-│   ├── Symbol table
-│   └── Scope management
+├── Semantic Analysis (语义分析 - 计划中)
+│   ├── 类型检查
+│   ├── 符号表
+│   └── 作用域管理
 │
-└── Code Generation (planned)
-    ├── IR generation
-    └── Target code
+└── Code Generation (代码生成 - 计划中)
+    ├── IR 生成
+    └── 目标代码
 ```
 
 ---
 
-## Project Structure
+## 项目结构
 
 ```
 Nova-Compiler/
-├── include/           # Header files
-│   ├── lexer/        # Lexer headers
-│   ├── parser/       # Parser headers
-│   ├── ast/          # AST definitions
-│   └── semantic/     # Semantic analysis (planned)
+├── include/           # 头文件
+│   ├── lexer/        # 词法分析器头文件
+│   ├── parser/       # 语法分析器头文件
+│   ├── ast/          # AST 定义
+│   └── semantic/     # 语义分析（计划中）
 │
-├── src/              # Source files
-│   ├── main.cpp      # Entry point
+├── src/              # 源文件
+│   ├── main.cpp      # 入口点
 │   └── ...
 │
-├── tests/            # Unit tests
-├── examples/         # Example Nova programs
-├── docs/             # Documentation
-├── Makefile          # Build configuration
-└── README.md         # This file
+├── tests/            # 单元测试
+├── examples/         # Nova 程序示例
+├── docs/             # 文档
+├── Makefile          # 构建配置
+└── README.md         # 本文件
 ```
 
 ---
 
-## Language Specification
+## 语言规范
 
-### Types
+### 类型
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `int` | 64-bit integer | `42`, `-17`, `0xFF` |
-| `float` | Double-precision float | `3.14`, `-0.5`, `1e10` |
-| `bool` | Boolean | `true`, `false` |
-| `string` | String | `"hello"`, `'world'` |
-| `char` | Character | `'a'`, `'\n'` |
-| `void` | No type | - |
+| 类型 | 描述 | 示例 |
+|------|------|------|
+| `int` | 64 位整数 | `42`, `-17`, `0xFF` |
+| `float` | 双精度浮点数 | `3.14`, `-0.5`, `1e10` |
+| `bool` | 布尔值 | `true`, `false` |
+| `string` | 字符串 | `"hello"`, `'world'` |
+| `char` | 字符 | `'a'`, `'\n'` |
+| `void` | 无类型 | - |
 
-### Operators
+### 运算符
 
-| Category | Operators |
-|----------|-----------|
-| Arithmetic | `+`, `-`, `*`, `/`, `%`, `**` |
-| Comparison | `==`, `!=`, `<`, `<=`, `>`, `>=` |
-| Logical | `&&`, `\|\|`, `!` |
-| Bitwise | `&`, `\|`, `^`, `~`, `<<`, `>>` |
-| Assignment | `=`, `+=`, `-=`, `*=`, `/=`, `%=` |
-| Increment | `++`, `--` |
+| 类别 | 运算符 |
+|------|--------|
+| 算术 | `+`, `-`, `*`, `/`, `%`, `**` |
+| 比较 | `==`, `!=`, `<`, `<=`, `>`, `>=` |
+| 逻辑 | `&&`, `\|\|`, `!` |
+| 位运算 | `&`, `\|`, `^`, `~`, `<<`, `>>` |
+| 赋值 | `=`, `+=`, `-=`, `*=`, `/=`, `%=` |
+| 自增/自减 | `++`, `--` |
 
-### Control Flow
+### 控制流
 
 ```nova
 // If-else
@@ -232,12 +232,12 @@ if (condition) {
     // ...
 }
 
-// While loop
+// While 循环
 while (condition) {
     // ...
 }
 
-// For loop
+// For 循环
 for (let i: int = 0; i < 10; i = i + 1) {
     // ...
 }
@@ -246,125 +246,125 @@ for (let i: int = 0; i < 10; i = i + 1) {
 return value;
 ```
 
-### Functions
+### 函数
 
 ```nova
 fn functionName(param: type) -> returnType {
-    // body
+    // 函数体
 }
 ```
 
 ---
 
-## Roadmap
+## 路线图
 
-### v0.1.0 (Current) - Foundation
-- [x] Lexer implementation
-- [x] Parser implementation
-- [x] AST design
-- [x] Basic examples
+### v0.1.0 (当前) - 基础框架
+- [x] 词法分析器实现
+- [x] 语法分析器实现
+- [x] AST 设计
+- [x] 基础示例
 
-### v0.2.0 - Semantic Analysis
-- [ ] Type checking
-- [ ] Symbol table
-- [ ] Scope management
-- [ ] Error detection
+### v0.2.0 - 语义分析
+- [ ] 类型检查
+- [ ] 符号表
+- [ ] 作用域管理
+- [ ] 错误检测
 
-### v0.3.0 - IR Generation
-- [ ] Intermediate representation
-- [ ] SSA form
-- [ ] Basic optimizations
+### v0.3.0 - IR 生成
+- [ ] 中间表示
+- [ ] SSA 形式
+- [ ] 基础优化
 
-### v0.4.0 - Code Generation
-- [ ] LLVM IR backend
-- [ ] C code generation
-- [ ] Bytecode VM
+### v0.4.0 - 代码生成
+- [ ] LLVM IR 后端
+- [ ] C 代码生成
+- [ ] 字节码虚拟机
 
-### v1.0.0 - Complete Compiler
-- [ ] Full language support
-- [ ] Standard library
-- [ ] Package manager
-- [ ] IDE integration
+### v1.0.0 - 完整编译器
+- [ ] 完整语言支持
+- [ ] 标准库
+- [ ] 包管理器
+- [ ] IDE 集成
 
 ---
 
-## Contributing
+## 贡献指南
 
-We welcome contributions! Here's how you can help:
+我们欢迎您的贡献！以下是参与方式：
 
-### Ways to Contribute
+### 贡献方式
 
-- 🐛 **Report bugs** - Use [GitHub Issues](https://github.com/NotSleeply/Nova-Compiler/issues)
-- 💡 **Suggest features** - Share your ideas in issues
-- 📝 **Improve documentation** - Fix typos, add examples
-- 💻 **Write code** - Pick an issue and submit a PR
-- 🧪 **Add tests** - Improve test coverage
+- 🐛 **报告 Bug** - 使用 [GitHub Issues](https://github.com/NotSleeply/Nova-Compiler/issues)
+- 💡 **建议功能** - 在 issues 中分享您的想法
+- 📝 **改进文档** - 修复错别字、添加示例
+- 💻 **编写代码** - 选择一个 issue 并提交 PR
+- 🧪 **添加测试** - 提高测试覆盖率
 
-### Development Setup
+### 开发环境设置
 
 ```bash
-# Fork and clone
+# Fork 并克隆
 git clone https://github.com/YOUR_USERNAME/Nova-Compiler.git
 cd Nova-Compiler
 
-# Create feature branch
+# 创建功能分支
 git checkout -b feature/amazing-feature
 
-# Make changes and test
+# 进行修改并测试
 make clean && make
 ./bin/novac --test
 
-# Submit pull request
+# 提交 Pull Request
 git push origin feature/amazing-feature
 ```
 
-### Code Style
+### 代码风格
 
-- Follow modern C++ best practices
-- Use meaningful variable names
-- Add comments for complex logic
-- Write tests for new features
-
----
-
-## Documentation
-
-- **[Language Specification](docs/LANGUAGE.md)** - Nova language syntax and semantics
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - Internal design and implementation
-- **[Contributing Guide](docs/CONTRIBUTING.md)** - How to contribute
-- **[API Reference](docs/API.md)** - Public API documentation
+- 遵循现代 C++ 最佳实践
+- 使用有意义的变量名
+- 为复杂逻辑添加注释
+- 为新功能编写测试
 
 ---
 
-## License
+## 文档
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgments
-
-Nova Compiler is inspired by and built upon knowledge from:
-
-- **Crafting Interpreters** by Robert Nystrom
-- **Engineering a Compiler** by Cooper & Torczon
-- **Modern Compiler Implementation** by Andrew Appel
-- **LLVM Project** - For inspiration on IR design
+- **[语言规范](docs/LANGUAGE.md)** - Nova 语言语法和语义
+- **[架构指南](docs/ARCHITECTURE.md)** - 内部设计和实现
+- **[贡献指南](docs/CONTRIBUTING.md)** - 如何贡献
+- **[API 参考](docs/API.md)** - 公共 API 文档
 
 ---
 
-## Community
+## 许可证
+
+本项目采用 **MIT 许可证** - 详情请见 [LICENSE](LICENSE) 文件。
+
+---
+
+## 致谢
+
+Nova 编译器受到以下知识和项目的启发：
+
+- **Crafting Interpreters** - Robert Nystrom 著
+- **Engineering a Compiler** - Cooper & Torczon 著
+- **Modern Compiler Implementation** - Andrew Appel 著
+- **LLVM Project** - IR 设计的灵感来源
+
+---
+
+## 社区
 
 - **GitHub**: [NotSleeply/Nova-Compiler](https://github.com/NotSleeply/Nova-Compiler)
-- **Issues**: [Bug reports and feature requests](https://github.com/NotSleeply/Nova-Compiler/issues)
+- **Issues**: [Bug 报告和功能请求](https://github.com/NotSleeply/Nova-Compiler/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/NotSleeply/Nova-Compiler/discussions)
 
 ---
 
 <div align="center">
 
-**Built with ❤️ by the open-source community**
+**由开源社区用 ❤️ 构建**
 
-[⬆ Back to Top](#nova-compiler)
+[⬆ 返回顶部](#nova-编译器)
 
 </div>
