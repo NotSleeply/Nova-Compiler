@@ -118,6 +118,7 @@ private:
     StmtPtr parseStatement();
     StmtPtr parseExprStmt();
     StmtPtr parseBlockStmt();
+    StmtPtr parseBlockStmtWithBrace();
     StmtPtr parseIfStmt();
     StmtPtr parseWhileStmt();
     StmtPtr parseForStmt();
@@ -267,7 +268,7 @@ inline DeclPtr Parser::parseFunctionDecl() {
         returnType = parseType();
     }
     
-    StmtPtr body = parseBlockStmt();
+    StmtPtr body = parseBlockStmtWithBrace();
     
     return std::make_shared<FunctionDecl>(name.lexeme, params, returnType, body, loc);
 }
@@ -345,7 +346,16 @@ inline StmtPtr Parser::parseExprStmt() {
 }
 
 inline StmtPtr Parser::parseBlockStmt() {
+    // This is called when '{' has already been consumed (from parseStatement)
     Location loc = previous().location;
+    auto stmts = parseBlock();
+    return std::make_shared<BlockStmt>(stmts, loc);
+}
+
+inline StmtPtr Parser::parseBlockStmtWithBrace() {
+    // This is called when '{' has NOT been consumed yet
+    Location loc = peek().location;
+    consume(TokenType::LBRACE, "Expected '{' before block");
     auto stmts = parseBlock();
     return std::make_shared<BlockStmt>(stmts, loc);
 }
@@ -355,14 +365,7 @@ inline std::vector<StmtPtr> Parser::parseBlock() {
     
     while (!check(TokenType::RBRACE) && !isAtEnd()) {
         try {
-            auto decl = parseDeclaration();
-            if (decl) {
-                // Wrap declarations in expression statements for now
-                statements.push_back(std::make_shared<ExpressionStmt>(
-                    nullptr, decl->location));
-            } else {
-                statements.push_back(parseStatement());
-            }
+            statements.push_back(parseStatement());
         } catch (const ParseError& e) {
             synchronize();
         }
@@ -407,9 +410,9 @@ inline StmtPtr Parser::parseForStmt() {
     consume(TokenType::LPAREN, "Expected '(' after 'for'");
     
     // Initializer
-    StmtPtr initializer = nullptr;
+    std::variant<std::monostate, StmtPtr, DeclPtr> initializer;
     if (match({TokenType::SEMICOLON})) {
-        // No initializer
+        // No initializer - already default initialized to monostate
     } else if (match({TokenType::KW_LET})) {
         initializer = parseVariableDecl(false);
         // Don't consume semicolon again, parseVariableDecl already did
@@ -667,7 +670,22 @@ inline std::vector<std::shared_ptr<ParamDecl>> Parser::parseParameters() {
 }
 
 inline TypePtr Parser::parseType() {
-    Token name = consume(TokenType::IDENTIFIER, "Expected type name");
+    Token name;
+    
+    // Handle primitive type keywords
+    if (match({TokenType::KW_INT})) {
+        name = previous();
+    } else if (match({TokenType::KW_FLOAT})) {
+        name = previous();
+    } else if (match({TokenType::KW_STRING})) {
+        name = previous();
+    } else if (match({TokenType::KW_BOOL})) {
+        name = previous();
+    } else if (match({TokenType::KW_VOID})) {
+        name = previous();
+    } else {
+        name = consume(TokenType::IDENTIFIER, "Expected type name");
+    }
     
     // Check for array type
     if (match({TokenType::LBRACKET})) {
@@ -677,18 +695,16 @@ inline TypePtr Parser::parseType() {
     }
     
     // Check for primitive types
-    if (name.lexeme == "int") {
+    if (name.lexeme == "int" || name.type == TokenType::KW_INT) {
         return std::make_shared<PrimitiveType>(PrimitiveTypeKind::INT, name.location);
-    } else if (name.lexeme == "float") {
+    } else if (name.lexeme == "float" || name.type == TokenType::KW_FLOAT) {
         return std::make_shared<PrimitiveType>(PrimitiveTypeKind::FLOAT, name.location);
-    } else if (name.lexeme == "string") {
+    } else if (name.lexeme == "string" || name.type == TokenType::KW_STRING) {
         return std::make_shared<PrimitiveType>(PrimitiveTypeKind::STRING, name.location);
-    } else if (name.lexeme == "bool") {
+    } else if (name.lexeme == "bool" || name.type == TokenType::KW_BOOL) {
         return std::make_shared<PrimitiveType>(PrimitiveTypeKind::BOOL, name.location);
-    } else if (name.lexeme == "void") {
+    } else if (name.lexeme == "void" || name.type == TokenType::KW_VOID) {
         return std::make_shared<PrimitiveType>(PrimitiveTypeKind::VOID, name.location);
-    } else if (name.lexeme == "char") {
-        return std::make_shared<PrimitiveType>(PrimitiveTypeKind::CHAR, name.location);
     }
     
     // User-defined type

@@ -314,14 +314,14 @@ inline void SemanticAnalyzer::analyzeForStmt(
     symbolTable_->pushScope();
     
     // Analyze initializer
-    if (forStmt->initializer) {
-        if (auto varDecl = std::dynamic_pointer_cast<VariableDecl>(
-            std::dynamic_pointer_cast<Declaration>(
-                // Need to handle this case properly
-                forStmt->initializer))) {
-            analyzeVariableDecl(varDecl);
-        } else {
-            analyzeStatement(forStmt->initializer);
+    if (!std::holds_alternative<std::monostate>(forStmt->initializer)) {
+        if (std::holds_alternative<DeclPtr>(forStmt->initializer)) {
+            auto decl = std::get<DeclPtr>(forStmt->initializer);
+            if (auto varDecl = std::dynamic_pointer_cast<VariableDecl>(decl)) {
+                analyzeVariableDecl(varDecl);
+            }
+        } else if (std::holds_alternative<StmtPtr>(forStmt->initializer)) {
+            analyzeStatement(std::get<StmtPtr>(forStmt->initializer));
         }
     }
     
@@ -454,12 +454,14 @@ inline TypePtr SemanticAnalyzer::analyzeCallExpr(
     
     // Get function symbol
     if (auto ident = std::dynamic_pointer_cast<Identifier>(call->callee)) {
-        auto symbol = symbolTable_->lookup(ident->name);
+        auto symbolOpt = symbolTable_->lookup(ident->name);
         
-        if (!symbol) {
+        if (!symbolOpt) {
             reportError("Undefined function '" + ident->name + "'", ident->location);
             return nullptr;
         }
+        
+        auto symbol = symbolOpt.value();
         
         if (symbol->kind != SymbolKind::FUNCTION) {
             reportError("'" + ident->name + "' is not a function", ident->location);
@@ -498,14 +500,14 @@ inline TypePtr SemanticAnalyzer::analyzeCallExpr(
 inline TypePtr SemanticAnalyzer::analyzeIdentifier(
     const std::shared_ptr<Identifier>& ident) {
     
-    auto symbol = symbolTable_->lookup(ident->name);
+    auto symbolOpt = symbolTable_->lookup(ident->name);
     
-    if (!symbol) {
+    if (!symbolOpt) {
         reportError("Undefined variable '" + ident->name + "'", ident->location);
         return nullptr;
     }
     
-    return symbol->type;
+    return symbolOpt.value()->type;
 }
 
 inline TypePtr SemanticAnalyzer::analyzeIntegerLiteral(
@@ -533,13 +535,14 @@ inline TypePtr SemanticAnalyzer::resolveType(const TypePtr& type) {
     
     if (type->nodeType == ASTNodeType::NAMED_TYPE) {
         auto named = std::dynamic_pointer_cast<NamedType>(type);
-        auto symbol = symbolTable_->lookup(named->name);
+        auto symbolOpt = symbolTable_->lookup(named->name);
         
-        if (!symbol) {
+        if (!symbolOpt) {
             reportError("Undefined type '" + named->name + "'", named->location);
             return nullptr;
         }
         
+        auto symbol = symbolOpt.value();
         if (symbol->kind != SymbolKind::STRUCT && 
             symbol->kind != SymbolKind::ENUM) {
             reportError("'" + named->name + "' is not a type", named->location);
