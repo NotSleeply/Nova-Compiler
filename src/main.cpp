@@ -2,7 +2,7 @@
  * @file main.cpp
  * @brief Main entry point for Nova Compiler
  * @author Nova Compiler Team
- * @version 0.1.0
+ * @version 0.2.0
  * @date 2026-04-02
  * 
  * Nova Compiler - A modern compiler frontend framework
@@ -20,6 +20,7 @@
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "ast/ast.h"
+#include "semantic/semantic_analyzer.h"
 
 using namespace nova;
 
@@ -28,7 +29,7 @@ using namespace nova;
  */
 void printUsage(const std::string& programName) {
     std::cout << R"(
-Nova Compiler v0.1.0
+Nova Compiler v0.2.0
 A modern compiler frontend framework
 
 Usage: )" << programName << R"( [options] <source-file>
@@ -37,6 +38,7 @@ Options:
   -h, --help          Show this help message
   -l, --lex           Run lexer only and print tokens
   -p, --parse         Run parser and print AST
+  -s, --semantic      Run semantic analysis
   -o, --output FILE   Output file (not implemented yet)
   -v, --version       Show version information
 
@@ -44,6 +46,7 @@ Examples:
   )" << programName << R"( example.nv
   )" << programName << R"( --lex example.nv
   )" << programName << R"( --parse example.nv
+  )" << programName << R"( --semantic example.nv
 
 For more information, visit: https://github.com/NotSleeply/Nova-Compiler
 )" << std::endl;
@@ -53,7 +56,7 @@ For more information, visit: https://github.com/NotSleeply/Nova-Compiler
  * @brief Print version information
  */
 void printVersion() {
-    std::cout << "Nova Compiler v0.1.0" << std::endl;
+    std::cout << "Nova Compiler v0.2.0" << std::endl;
     std::cout << "Built on " << __DATE__ << " at " << __TIME__ << std::endl;
     std::cout << "Copyright (c) 2026 Nova Compiler Team" << std::endl;
 }
@@ -160,8 +163,17 @@ int compile(const std::string& source, const std::string& filename) {
         }
         std::cout << "  ✓ Parsed successfully" << std::endl;
         
-        // Phase 3: Semantic Analysis (TODO)
-        std::cout << "Phase 3: Semantic Analysis... (Not implemented yet)" << std::endl;
+        // Phase 3: Semantic Analysis
+        std::cout << "Phase 3: Semantic Analysis..." << std::endl;
+        SemanticAnalyzer analyzer;
+        if (!analyzer.analyze(program)) {
+            std::cerr << "  ✗ Semantic errors found:" << std::endl;
+            for (const auto& error : analyzer.getErrors()) {
+                std::cerr << "    " << error.toString() << std::endl;
+            }
+            return 1;
+        }
+        std::cout << "  ✓ Semantic analysis passed" << std::endl;
         
         // Phase 4: Code Generation (TODO)
         std::cout << "Phase 4: Code Generation... (Not implemented yet)" << std::endl;
@@ -190,6 +202,7 @@ int main(int argc, char* argv[]) {
     std::string sourceFile;
     bool lexOnly = false;
     bool parseOnly = false;
+    bool semanticOnly = false;
     
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
@@ -205,6 +218,8 @@ int main(int argc, char* argv[]) {
             lexOnly = true;
         } else if (arg == "-p" || arg == "--parse") {
             parseOnly = true;
+        } else if (arg == "-s" || arg == "--semantic") {
+            semanticOnly = true;
         } else if (arg == "-o" || arg == "--output") {
             if (i + 1 < argc) {
                 // Output file specified (not implemented yet)
@@ -242,7 +257,59 @@ int main(int argc, char* argv[]) {
         return runLexer(source, sourceFile);
     } else if (parseOnly) {
         return runParser(source, sourceFile);
+    } else if (semanticOnly) {
+        return runSemantic(source, sourceFile);
     } else {
         return compile(source, sourceFile);
+    }
+}
+
+/**
+ * @brief Run semantic analysis and print results
+ */
+int runSemantic(const std::string& source, const std::string& filename) {
+    try {
+        // First, tokenize
+        Lexer lexer(source, filename);
+        std::vector<Token> tokens = lexer.tokenize();
+        
+        // Then parse
+        Parser parser(tokens);
+        auto program = parser.parse();
+        
+        if (parser.hasErrors()) {
+            std::cerr << "\n=== Parse Errors ===\n" << std::endl;
+            for (const auto& error : parser.getErrors()) {
+                std::cerr << "Error: " << error.what() << std::endl;
+            }
+            return 1;
+        }
+        
+        // Then semantic analysis
+        SemanticAnalyzer analyzer;
+        if (!analyzer.analyze(program)) {
+            std::cerr << "\n=== Semantic Errors ===\n" << std::endl;
+            for (const auto& error : analyzer.getErrors()) {
+                std::cerr << error.toString() << std::endl;
+            }
+            return 1;
+        }
+        
+        std::cout << "\n=== Semantic Analysis ===\n" << std::endl;
+        std::cout << "✓ No semantic errors found" << std::endl;
+        std::cout << "✓ Type checking passed" << std::endl;
+        std::cout << "✓ Symbol resolution completed" << std::endl;
+        
+        return 0;
+        
+    } catch (const LexerError& e) {
+        std::cerr << "Lexer Error: " << e.what() << std::endl;
+        return 1;
+    } catch (const ParseError& e) {
+        std::cerr << "Parse Error: " << e.what() << std::endl;
+        return 1;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
     }
 }
