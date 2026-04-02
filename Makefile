@@ -148,4 +148,7 @@ $(BUILD_DIR)/main.o: $(SRC_DIR)/main.cpp \
                      $(INCLUDE_DIR)/lexer/token.h \
                      $(INCLUDE_DIR)/lexer/lexer.h \
                      $(INCLUDE_DIR)/parser/parser.h \
-                     $(INCLUDE_DIR)/ast/ast.h
+                     $(INCLUDE_DIR)/ast/ast.h \
+                     $(INCLUDE_DIR)/semantic/semantic_analyzer.h \
+                     $(INCLUDE_DIR)/ir/ir.h \
+                     $(INCLUDE_DIR)/ir/ir_generator.h

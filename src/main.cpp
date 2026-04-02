@@ -21,6 +21,8 @@
 #include "parser/parser.h"
 #include "ast/ast.h"
 #include "semantic/semantic_analyzer.h"
+#include "ir/ir.h"
+#include "ir/ir_generator.h"
 
 using namespace nova;
 
@@ -47,6 +49,7 @@ Examples:
   )" << programName << R"( --lex example.nv
   )" << programName << R"( --parse example.nv
   )" << programName << R"( --semantic example.nv
+  )" << programName << R"( --ir example.nv
 
 For more information, visit: https://github.com/NotSleeply/Nova-Compiler
 )" << std::endl;
@@ -144,6 +147,11 @@ int runParser(const std::string& source, const std::string& filename) {
 int runSemantic(const std::string& source, const std::string& filename);
 
 /**
+ * @brief Generate and print IR
+ */
+int generateIR(const std::string& source, const std::string& filename);
+
+/**
  * @brief Full compilation pipeline
  */
 int compile(const std::string& source, const std::string& filename) {
@@ -208,6 +216,7 @@ int main(int argc, char* argv[]) {
     bool lexOnly = false;
     bool parseOnly = false;
     bool semanticOnly = false;
+    bool irOnly = false;
     
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
@@ -225,6 +234,8 @@ int main(int argc, char* argv[]) {
             parseOnly = true;
         } else if (arg == "-s" || arg == "--semantic") {
             semanticOnly = true;
+        } else if (arg == "-i" || arg == "--ir") {
+            irOnly = true;
         } else if (arg == "-o" || arg == "--output") {
             if (i + 1 < argc) {
                 // Output file specified (not implemented yet)
@@ -264,6 +275,8 @@ int main(int argc, char* argv[]) {
         return runParser(source, sourceFile);
     } else if (semanticOnly) {
         return runSemantic(source, sourceFile);
+    } else if (irOnly) {
+        return generateIR(source, sourceFile);
     } else {
         return compile(source, sourceFile);
     }
@@ -304,6 +317,58 @@ int runSemantic(const std::string& source, const std::string& filename) {
         std::cout << "✓ No semantic errors found" << std::endl;
         std::cout << "✓ Type checking passed" << std::endl;
         std::cout << "✓ Symbol resolution completed" << std::endl;
+        
+        return 0;
+        
+    } catch (const LexerError& e) {
+        std::cerr << "Lexer Error: " << e.what() << std::endl;
+        return 1;
+    } catch (const ParseError& e) {
+        std::cerr << "Parse Error: " << e.what() << std::endl;
+        return 1;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+}
+
+/**
+ * @brief Generate and print IR
+ */
+int generateIR(const std::string& source, const std::string& filename) {
+    try {
+        // First, tokenize
+        Lexer lexer(source, filename);
+        std::vector<Token> tokens = lexer.tokenize();
+        
+        // Then parse
+        Parser parser(tokens);
+        auto program = parser.parse();
+        
+        if (parser.hasErrors()) {
+            std::cerr << "\n=== Parse Errors ===\n" << std::endl;
+            for (const auto& error : parser.getErrors()) {
+                std::cerr << "Error: " << error.what() << std::endl;
+            }
+            return 1;
+        }
+        
+        // Semantic analysis
+        SemanticAnalyzer analyzer;
+        if (!analyzer.analyze(program)) {
+            std::cerr << "\n=== Semantic Errors ===\n" << std::endl;
+            for (const auto& error : analyzer.getErrors()) {
+                std::cerr << error.toString() << std::endl;
+            }
+            return 1;
+        }
+        
+        // Generate IR
+        IRGenerator irGen;
+        auto irModule = irGen.generate(program);
+        
+        std::cout << "\n=== Intermediate Representation ===\n" << std::endl;
+        std::cout << irModule->toString() << std::endl;
         
         return 0;
         

@@ -420,6 +420,122 @@ public:
     }
 };
 
+/**
+ * @class AssignmentExpr
+ * @brief Assignment expression (e.g., x = 10)
+ */
+class AssignmentExpr : public Expression {
+public:
+    ExprPtr target;     // Left-hand side (must be assignable)
+    ExprPtr value;      // Right-hand side
+    
+    AssignmentExpr(ExprPtr tgt, ExprPtr val, const Location& loc)
+        : Expression(ASTNodeType::ASSIGNMENT_EXPR, loc),
+          target(tgt), value(val) {}
+    
+    std::string toString(int indent = 0) const override {
+        std::string result = std::string(indent, ' ') + "AssignmentExpr:\n";
+        result += std::string(indent + 2, ' ') + "Target:\n";
+        result += target->toString(indent + 4) + "\n";
+        result += std::string(indent + 2, ' ') + "Value:\n";
+        result += value->toString(indent + 4);
+        return result;
+    }
+};
+
+/**
+ * @class TernaryExpr
+ * @brief Ternary conditional expression (e.g., cond ? a : b)
+ */
+class TernaryExpr : public Expression {
+public:
+    ExprPtr condition;
+    ExprPtr thenExpr;
+    ExprPtr elseExpr;
+    
+    TernaryExpr(ExprPtr cond, ExprPtr thenE, ExprPtr elseE, const Location& loc)
+        : Expression(ASTNodeType::TERNARY_EXPR, loc),
+          condition(cond), thenExpr(thenE), elseExpr(elseE) {}
+    
+    std::string toString(int indent = 0) const override {
+        std::string result = std::string(indent, ' ') + "TernaryExpr:\n";
+        result += std::string(indent + 2, ' ') + "Condition:\n";
+        result += condition->toString(indent + 4) + "\n";
+        result += std::string(indent + 2, ' ') + "Then:\n";
+        result += thenExpr->toString(indent + 4) + "\n";
+        result += std::string(indent + 2, ' ') + "Else:\n";
+        result += elseExpr->toString(indent + 4);
+        return result;
+    }
+};
+
+/**
+ * @class IndexExpr
+ * @brief Array indexing expression (e.g., arr[i])
+ */
+class IndexExpr : public Expression {
+public:
+    ExprPtr object;     // Array or collection
+    ExprPtr index;      // Index expression
+    
+    IndexExpr(ExprPtr obj, ExprPtr idx, const Location& loc)
+        : Expression(ASTNodeType::INDEX_EXPR, loc),
+          object(obj), index(idx) {}
+    
+    std::string toString(int indent = 0) const override {
+        std::string result = std::string(indent, ' ') + "IndexExpr:\n";
+        result += std::string(indent + 2, ' ') + "Object:\n";
+        result += object->toString(indent + 4) + "\n";
+        result += std::string(indent + 2, ' ') + "Index:\n";
+        result += index->toString(indent + 4);
+        return result;
+    }
+};
+
+/**
+ * @class MemberExpr
+ * @brief Member access expression (e.g., obj.field)
+ */
+class MemberExpr : public Expression {
+public:
+    ExprPtr object;     // Object or struct
+    std::string member; // Member name
+    
+    MemberExpr(ExprPtr obj, const std::string& mem, const Location& loc)
+        : Expression(ASTNodeType::MEMBER_EXPR, loc),
+          object(obj), member(mem) {}
+    
+    std::string toString(int indent = 0) const override {
+        std::string result = std::string(indent, ' ') + "MemberExpr:\n";
+        result += std::string(indent + 2, ' ') + "Object:\n";
+        result += object->toString(indent + 4) + "\n";
+        result += std::string(indent + 2, ' ') + "Member: " + member;
+        return result;
+    }
+};
+
+/**
+ * @class ArrayLiteral
+ * @brief Array literal expression (e.g., [1, 2, 3])
+ */
+class ArrayLiteral : public Expression {
+public:
+    std::vector<ExprPtr> elements;
+    
+    ArrayLiteral(std::vector<ExprPtr> elems, const Location& loc)
+        : Expression(ASTNodeType::ARRAY_LITERAL_EXPR, loc),
+          elements(std::move(elems)) {}
+    
+    std::string toString(int indent = 0) const override {
+        std::string result = std::string(indent, ' ') + "ArrayLiteral:\n";
+        result += std::string(indent + 2, ' ') + "Elements:\n";
+        for (const auto& elem : elements) {
+            result += elem->toString(indent + 4) + "\n";
+        }
+        return result;
+    }
+};
+
 // ============================================================================
 // Statements
 // ============================================================================
@@ -562,6 +678,34 @@ public:
     }
 };
 
+/**
+ * @class BreakStmt
+ * @brief Break statement (for loops)
+ */
+class BreakStmt : public Statement {
+public:
+    BreakStmt(const Location& loc)
+        : Statement(ASTNodeType::BREAK_STMT, loc) {}
+    
+    std::string toString(int indent = 0) const override {
+        return std::string(indent, ' ') + "BreakStmt";
+    }
+};
+
+/**
+ * @class ContinueStmt
+ * @brief Continue statement (for loops)
+ */
+class ContinueStmt : public Statement {
+public:
+    ContinueStmt(const Location& loc)
+        : Statement(ASTNodeType::CONTINUE_STMT, loc) {}
+    
+    std::string toString(int indent = 0) const override {
+        return std::string(indent, ' ') + "ContinueStmt";
+    }
+};
+
 // ============================================================================
 // Declarations
 // ============================================================================
@@ -697,18 +841,42 @@ public:
 };
 
 /**
+ * @class EnumDecl
+ * @brief Enum declaration
+ */
+class EnumDecl : public Declaration {
+public:
+    std::vector<std::string> variants;  // Enum variant names
+    
+    EnumDecl(const std::string& n, 
+             std::vector<std::string> vars,
+             const Location& loc)
+        : Declaration(ASTNodeType::ENUM_DECL, n, loc), variants(std::move(vars)) {}
+    
+    std::string toString(int indent = 0) const override {
+        std::string result = std::string(indent, ' ') + "EnumDecl: " + name + "\n";
+        result += std::string(indent + 2, ' ') + "Variants:\n";
+        for (const auto& variant : variants) {
+            result += std::string(indent + 4, ' ') + variant + "\n";
+        }
+        return result;
+    }
+};
+
+/**
  * @class Program
  * @brief Root node representing the entire program
  */
 class Program : public ASTNode {
 public:
+    std::string fileName;
     std::vector<DeclPtr> declarations;
     
-    Program(const Location& loc)
-        : ASTNode(ASTNodeType::PROGRAM, loc) {}
+    Program(const std::string& file, const Location& loc)
+        : ASTNode(ASTNodeType::PROGRAM, loc), fileName(file) {}
     
     std::string toString(int indent = 0) const override {
-        std::string result = std::string(indent, ' ') + "Program:\n";
+        std::string result = std::string(indent, ' ') + "Program: " + fileName + "\n";
         for (const auto& decl : declarations) {
             result += decl->toString(indent + 2) + "\n";
         }
