@@ -1,0 +1,131 @@
+name: Nova Compiler CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        compiler: [g++]
+        include:
+          - os: ubuntu-latest
+            compiler: g++
+          - os: macos-latest
+            compiler: clang++
+          - os: windows-latest
+            compiler: g++
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++ make
+    
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install make || true
+    
+    - name: Set up MinGW (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: egor-tensin/setup-mingw@v2
+      with:
+        platform: x64
+    
+    - name: Build project
+      run: |
+        make clean || true
+        make CXX=${{ matrix.compiler }}
+    
+    - name: Test lexer
+      run: |
+        ./bin/novac --lex examples/minimal.nv || bin\novac.exe --lex examples/minimal.nv
+      shell: bash
+    
+    - name: Test parser
+      run: |
+        ./bin/novac --parse examples/minimal.nv || bin\novac.exe --parse examples/minimal.nv
+      shell: bash
+    
+    - name: Test semantic analysis
+      run: |
+        ./bin/novac --semantic examples/minimal.nv || bin\novac.exe --semantic examples/minimal.nv
+      shell: bash
+    
+    - name: Test full compilation
+      run: |
+        ./bin/novac examples/minimal.nv || bin\novac.exe examples/minimal.nv
+      shell: bash
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install static analysis tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cppcheck
+    
+    - name: Static analysis
+      run: |
+        cppcheck --enable=all --std=c++17 -I include src/ || true
+    
+    - name: Check code formatting
+      run: |
+        echo "Code formatting check - manual review recommended"
+        # Uncomment if you have clang-format configured
+        # find src include -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+  documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check documentation
+      run: |
+        echo "Checking documentation files..."
+        test -f README.md && echo "✓ README.md exists"
+        test -f docs/CHANGELOG.md && echo "✓ CHANGELOG.md exists"
+        test -f LICENSE && echo "✓ LICENSE exists"
+    
+    - name: Generate Doxygen documentation
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen
+        if [ -f Doxyfile ]; then
+          doxygen Doxyfile
+        else
+          echo "No Doxyfile found, skipping documentation generation"
+        fi
+
+  release:
+    needs: [build-and-test, code-quality]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build release
+      run: |
+        make clean
+        make release CXX=g++
+    
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: bin/novac
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
