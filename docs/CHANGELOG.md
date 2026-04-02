@@ -1,84 +1,84 @@
-# Changelog
+# 更新日志
 
-All notable changes to Nova Compiler will be documented in this file.
+Nova 编译器的所有重要变更都将记录在此文件中。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
+本项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)。
 
-## [Unreleased]
+## [未发布]
 
-### Added
-- Semantic analysis module (in progress)
-- Type checking infrastructure
-- Symbol table implementation
+### 新增
+- 语义分析模块（进行中）
+- 类型检查基础设施
+- 符号表实现
 
 ## [0.1.0] - 2026-04-02
 
-### Added
-- **Lexer (Lexical Analysis)**
-  - Complete tokenization of source code
-  - Support for all literal types (int, float, string, char, bool)
-  - Keyword and identifier recognition
-  - Operator and delimiter handling
-  - Single-line (`//`) and multi-line (`/* */`) comment support
-  - Escape sequences in strings
-  - Source location tracking (file, line, column, offset)
-  - Comprehensive error reporting
+### 新增
+- **Lexer (词法分析)**
+  - 完整的源代码词元化
+  - 支持所有字面量类型（int、float、string、char、bool）
+  - 关键字和标识符识别
+  - 运算符和分隔符处理
+  - 单行 (`//`) 和多行 (`/* */`) 注释支持
+  - 字符串中的转义序列
+  - 源码位置跟踪（文件、行、列、偏移量）
+  - 全面的错误报告
 
-- **Parser (Syntax Analysis)**
-  - Recursive descent parser implementation
-  - Expression parsing with proper operator precedence
-  - Statement parsing (if, while, for, return, block)
-  - Declaration parsing (functions, variables, structs)
-  - Type annotation parsing
-  - Error recovery and synchronization
-  - Complete AST generation
+- **Parser (语法分析)**
+  - 递归下降解析器实现
+  - 正确运算符优先级的表达式解析
+  - 语句解析（if、while、for、return、代码块）
+  - 声明解析（函数、变量、结构体）
+  - 类型注解解析
+  - 错误恢复和同步
+  - 完整的 AST 生成
 
-- **AST (Abstract Syntax Tree)**
-  - Type system (primitives, named types, arrays)
-  - Expression nodes (literals, binary, unary, call, member access)
-  - Statement nodes (control flow, blocks, return)
-  - Declaration nodes (functions, variables, structs, fields)
-  - Pretty printing for debugging
+- **AST (抽象语法树)**
+  - 类型系统（基本类型、命名类型、数组）
+  - 表达式节点（字面量、二元、一元、调用、成员访问）
+  - 语句节点（控制流、代码块、return）
+  - 声明节点（函数、变量、结构体、字段）
+  - 用于调试的格式化打印
 
-- **Build System**
-  - Makefile with multiple build targets
-  - Debug and release configurations
-  - Test target
-  - Installation targets
+- **构建系统**
+  - 包含多个构建目标的 Makefile
+  - Debug 和 release 配置
+  - 测试目标
+  - 安装目标
 
-- **Examples**
-  - Hello World example (`hello.nv`)
-  - Demonstration of language features
+- **示例**
+  - Hello World 示例 (`hello.nv`)
+  - 语言特性演示
 
-- **Documentation**
-  - Comprehensive README
-  - Inline code documentation
-  - Architecture overview
+- **文档**
+  - 全面的 README
+  - 内联代码文档
+  - 架构概述
 
-### Project Infrastructure
-- MIT License
-- .gitignore for build artifacts
-- Changelog for version tracking
+### 项目基础设施
+- MIT 许可证
+- 用于构建产物的 .gitignore
+- 用于版本跟踪的更新日志
 
 ## [0.0.1] - 2026-04-02
 
-### Added
-- Initial project structure
-- GitHub repository creation
-- Basic directory layout
+### 新增
+- 初始项目结构
+- GitHub 仓库创建
+- 基础目录布局
 
 ---
 
-## Version History
+## 版本历史
 
-| Version | Date | Description |
-|---------|------|-------------|
-| 0.1.0 | 2026-04-02 | Initial release with lexer and parser |
-| 0.0.1 | 2026-04-02 | Project initialization |
+| 版本 | 日期 | 描述 |
+|------|------|------|
+| 0.1.0 | 2026-04-02 | 初始版本，包含词法分析器和语法分析器 |
+| 0.0.1 | 2026-04-02 | 项目初始化 |
 
 ---
 
-[Unreleased]: https://github.com/NotSleeply/Nova-Compiler/compare/v0.1.0...HEAD
+[未发布]: https://github.com/NotSleeply/Nova-Compiler/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/NotSleeply/Nova-Compiler/releases/tag/v0.1.0
 [0.0.1]: https://github.com/NotSleeply/Nova-Compiler/releases/tag/v0.0.1
