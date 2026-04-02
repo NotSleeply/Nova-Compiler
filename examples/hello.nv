@@ -1,0 +1,37 @@
+// hello.nv - Hello World example for Nova Language
+// ================================================
+
+// Function declaration
+fn greet(name: string) -> string {
+    return "Hello, " + name + "!";
+}
+
+// Main entry point
+fn main() -> void {
+    let message: string = greet("World");
+    println(message);
+    
+    // Variables and expressions
+    let x: int = 42;
+    let y: int = 10;
+    let sum: int = x + y;
+    
+    // Control flow
+    if (sum > 50) {
+        println("Sum is greater than 50");
+    } else {
+        println("Sum is 50 or less");
+    }
+    
+    // Loop example
+    let i: int = 0;
+    while (i < 5) {
+        println(i);
+        i = i + 1;
+    }
+    
+    // For loop
+    for (let j: int = 0; j < 3; j = j + 1) {
+        println("Iteration: " + j);
+    }
+}
