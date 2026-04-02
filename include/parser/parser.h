@@ -223,7 +223,8 @@ inline void Parser::synchronize() {
 }
 
 inline std::shared_ptr<Program> Parser::parse() {
-    auto program = std::make_shared<Program>(Location("source", 1, 1, 0));
+    std::string filename = tokens_.empty() ? "source" : tokens_[0].location.filename;
+    auto program = std::make_shared<Program>(filename, Location(filename, 1, 1, 0));
     
     while (!isAtEnd()) {
         try {
