@@ -52,44 +52,28 @@ struct GeneratedCode {
 
 /**
  * @class CodeGenerator
- * @brief Base class for code generators
+ * @brief Abstract base class for code generators
  */
 class CodeGenerator {
 public:
     virtual ~CodeGenerator() = default;
     
-    virtual GeneratedCode generate(const std::shared_ptr<IRModule>& module) = 0;
-    virtual TargetPlatform getPlatform() const = 0;
+    /**
+     * @brief Generate target code from IR module
+     * @param module IR module to translate
+     * @return Generated code structure
+     */
+    virtual GeneratedCode generate(const IRModulePtr& module) = 0;
     
-    void setOutputFile(const std::string& filename) {
-        outputFile_ = filename;
-    }
-    
-    const std::string& getOutputFile() const {
-        return outputFile_;
-    }
-    
-    void setOptimization(bool enable) {
-        optimization_ = enable;
-    }
-    
-    bool isOptimizationEnabled() const {
-        return optimization_;
+    /**
+     * @brief Set output filename
+     */
+    virtual void setOutputFile(const std::string& filename) {
+        outputFilename = filename;
     }
     
 protected:
-    std::string outputFile_;
-    bool optimization_ = false;
-    int indentLevel_ = 0;
-    
-    std::string indent(int level = -1) const {
-        if (level == -1) level = indentLevel_;
-        return std::string(level * 4, ' ');
-    }
-    
-    std::string currentIndent() const {
-        return indent(indentLevel_);
-    }
+    std::string outputFilename;
 };
 
 /**
@@ -98,32 +82,56 @@ protected:
  */
 class CCodeGenerator : public CodeGenerator {
 public:
-    CCodeGenerator() : CodeGenerator() {}
+    CCodeGenerator() : indentLevel(0) {}
     
-    GeneratedCode generate(const std::shared_ptr<IRModule>& module) override;
-    TargetPlatform getPlatform() const override { return TargetPlatform::C_CODE; }
+    GeneratedCode generate(const IRModulePtr& module) override;
     
+    void setOutputFile(const std::string& filename) override {
+        outputFilename = filename;
+    }
+
 private:
-    std::stringstream code_;
-    std::stringstream header_;
-    std::stringstream functions_;
+    // Output stream
+    std::ostringstream output;
+    std::ostringstream globalOutput;
+    int indentLevel;
     
-    std::unordered_map<std::string, std::string> typeMap_;
-    std::vector<std::string> includes_;
-    std::vector<std::string> globals_;
+    // Maps for tracking variables
+    std::unordered_map<std::string, std::string> tempVarTypes;  // temp var -> C type
+    std::unordered_map<std::string, int> tempVarCounters;       // temp var counters
+    std::unordered_map<std::string, std::string> labelMap;      // IR label -> C label
     
-    void generateHeader(const std::shared_ptr<IRModule>& module);
-    void generateGlobals(const std::shared_ptr<IRModule>& module);
-    void generateFunction(const std::shared_ptr<IRFunction>& func);
-    void generateBasicBlock(const std::shared_ptr<IRBasicBlock>& block);
-    void generateInstruction(const std::shared_ptr<IRInstruction>& instr);
+    // Code generation helpers
+    void emitHeader();
+    void emitGlobals(const IRModulePtr& module);
+    void emitFunction(const IRFuncPtr& func);
+    void emitBasicBlock(const IRBlockPtr& block, const std::string& funcName);
+    void emitInstruction(const IRInstPtr& inst, const std::string& funcName);
     
-    std::string translateTypeToC(const std::string& type) const;
-    std::string translateOperand(const IROperand& op) const;
-    void emit(const std::string& line);
-    void emitInclude(const std::string& header);
-    void emitGlobal(const std::string& decl);
-    std::string opcodeToOperator(IROpcode op) const;
+    // Type translation
+    std::string translateType(const std::string& novaType);
+    
+    // Operand translation
+    std::string translateOperand(const IROperand& operand);
+    
+    // Instruction generation
+    void generateArithmetic(const IRInstPtr& inst);
+    void generateComparison(const IRInstPtr& inst);
+    void generateLogical(const IRInstPtr& inst);
+    void generateMemoryOp(const IRInstPtr& inst);
+    void generateControlFlow(const IRInstPtr& inst, const std::string& funcName);
+    void generateFunctionCall(const IRInstPtr& inst);
+    
+    // Utility functions
+    void emit(const std::string& code);
+    void emitLine(const std::string& code);
+    void indent() { indentLevel++; }
+    void dedent() { indentLevel--; }
+    std::string getIndent() const { return std::string(indentLevel * 4, ' '); }
+    
+    // Label management
+    std::string sanitizeLabel(const std::string& label);
+    std::string sanitizeIdentifier(const std::string& name);
 };
 
 /**
@@ -136,418 +144,442 @@ public:
         switch (platform) {
             case TargetPlatform::C_CODE:
                 return std::make_unique<CCodeGenerator>();
-            case TargetPlatform::LLVM_IR:
-                throw std::runtime_error("LLVM IR generation not yet implemented");
-            case TargetPlatform::X86_64_ASM:
-                throw std::runtime_error("x86-64 assembly generation not yet implemented");
-            case TargetPlatform::WASM:
-                throw std::runtime_error("WebAssembly generation not yet implemented");
             default:
-                throw std::runtime_error("Unknown target platform");
+                throw std::runtime_error("Unsupported target platform");
         }
     }
 };
 
 // ============================================================================
-// Implementation
+// Implementation (inline for header-only library)
 // ============================================================================
 
-inline GeneratedCode CCodeGenerator::generate(const std::shared_ptr<IRModule>& module) {
-    code_.str("");
-    header_.str("");
-    functions_.str("");
-    typeMap_.clear();
-    includes_.clear();
-    globals_.clear();
+inline GeneratedCode CCodeGenerator::generate(const IRModulePtr& module) {
+    // Clear previous state
+    output.str("");
+    globalOutput.str("");
+    tempVarTypes.clear();
+    tempVarCounters.clear();
+    labelMap.clear();
+    indentLevel = 0;
     
-    generateHeader(module);
-    generateGlobals(module);
+    // Generate C code
+    emitHeader();
+    emitGlobals(module);
     
+    // Generate all functions
     for (const auto& func : module->functions) {
-        generateFunction(func);
+        emitFunction(func);
     }
     
-    code_ << header_.str() << "\n";
+    // Combine global and function code
+    std::string fullCode = globalOutput.str() + "\n" + output.str();
     
-    if (!globals_.empty()) {
-        code_ << "/* Global Variables */\n";
-        for (const auto& global : globals_) {
-            code_ << global << "\n";
+    // Determine output filename
+    std::string filename = outputFilename.empty() ? 
+        module->name + ".c" : outputFilename;
+    
+    return GeneratedCode(fullCode, filename, "C");
+}
+
+inline void CCodeGenerator::emitHeader() {
+    emitLine("/* Generated by Nova Compiler */");
+    emitLine("#include <stdio.h>");
+    emitLine("#include <stdlib.h>");
+    emitLine("#include <string.h>");
+    emitLine("#include <stdbool.h>");
+    emitLine("");
+}
+
+inline void CCodeGenerator::emitGlobals(const IRModulePtr& module) {
+    if (!module->globalVariables.empty()) {
+        emitLine("/* Global Variables */");
+        for (const auto& gv : module->globalVariables) {
+            std::string type = translateType(gv.second);
+            std::string name = sanitizeIdentifier(gv.first);
+            globalOutput << type << " " << name << ";\n";
         }
-        code_ << "\n";
-    }
-    
-    code_ << functions_.str();
-    
-    std::string outFile = outputFile_.empty() ? 
-        (module->name.empty() ? "output.c" : module->name + ".c") : 
-        outputFile_;
-    
-    return GeneratedCode(code_.str(), outFile, "C");
-}
-
-inline void CCodeGenerator::generateHeader(const std::shared_ptr<IRModule>& module) {
-    emitInclude("stdio.h");
-    emitInclude("stdlib.h");
-    emitInclude("string.h");
-    emitInclude("stdbool.h");
-    emitInclude("stdint.h");
-    
-    header_ << "/*\n";
-    header_ << " * Generated by Nova Compiler\n";
-    header_ << " * Source: " << module->name << "\n";
-    header_ << " * Target: C Code\n";
-    header_ << " */\n\n";
-    
-    for (const auto& inc : includes_) {
-        header_ << inc << "\n";
+        globalOutput << "\n";
     }
 }
 
-inline void CCodeGenerator::generateGlobals(const std::shared_ptr<IRModule>& module) {
-    for (const auto& global : module->globalVariables) {
-        std::string name = global.first;
-        std::string type = global.second;
-        emitGlobal(translateTypeToC(type) + " " + name + ";");
+inline void CCodeGenerator::emitFunction(const IRFuncPtr& func) {
+    // Collect all temporary variables
+    std::unordered_map<std::string, std::string> tempVars;
+    for (const auto& block : func->basicBlocks) {
+        for (const auto& inst : block->instructions) {
+            if (inst->dest.isTemporary()) {
+                std::string tempName = inst->dest.value;
+                std::string type = translateType(inst->dest.dataType.empty() ? "int" : inst->dest.dataType);
+                tempVars[tempName] = type;
+            }
+        }
     }
-}
-
-inline void CCodeGenerator::generateFunction(const std::shared_ptr<IRFunction>& func) {
-    std::string returnType = translateTypeToC(func->returnType);
-    std::string params;
     
+    // Function signature
+    std::string returnType = translateType(func->returnType);
+    std::string funcName = sanitizeIdentifier(func->name);
+    
+    output << returnType << " " << funcName << "(";
+    
+    // Parameters
     for (size_t i = 0; i < func->parameters.size(); ++i) {
-        if (i > 0) params += ", ";
-        params += translateTypeToC(func->paramTypes[i]) + " " + func->parameters[i];
-        typeMap_[func->parameters[i]] = func->paramTypes[i];
+        if (i > 0) output << ", ";
+        std::string paramType = translateType(func->parameters[i].second);
+        std::string paramName = sanitizeIdentifier(func->parameters[i].first);
+        output << paramType << " " << paramName;
     }
     
-    if (params.empty()) params = "void";
+    output << ") {\n";
+    indent();
     
-    functions_ << returnType << " " << func->name << "(" << params << ") {\n";
-    indentLevel_ = 1;
-    
-    for (size_t i = 0; i < func->basicBlocks.size(); ++i) {
-        const auto& block = func->basicBlocks[i];
-        
-        if (i > 0) {
-            functions_ << currentIndent() << func->name << "_" << block->label << ":;\n";
+    // Declare temporary variables
+    if (!tempVars.empty()) {
+        emitLine("/* Temporary variables */");
+        for (const auto& [tempName, tempType] : tempVars) {
+            emitLine(tempType + " _t_" + tempName + ";");
         }
-        
-        for (const auto& instr : block->instructions) {
-            generateInstruction(instr);
-        }
+        emitLine("");
     }
     
-    indentLevel_ = 0;
-    functions_ << "}\n\n";
+    // Generate basic blocks
+    for (const auto& block : func->basicBlocks) {
+        emitBasicBlock(block, func->name);
+    }
+    
+    dedent();
+    emitLine("}");
+    emitLine("");
 }
 
-inline void CCodeGenerator::generateBasicBlock(const std::shared_ptr<IRBasicBlock>& block) {
-    for (const auto& instr : block->instructions) {
-        generateInstruction(instr);
+inline void CCodeGenerator::emitBasicBlock(const IRBlockPtr& block, const std::string& funcName) {
+    // Emit block label
+    std::string label = sanitizeLabel(block->name);
+    emitLine("");
+    emitLine("/* Block: " + block->name + " */");
+    emit(label + ":");
+    indent();
+    
+    // Emit instructions
+    for (const auto& inst : block->instructions) {
+        emitInstruction(inst, funcName);
     }
+    
+    dedent();
 }
 
-inline void CCodeGenerator::generateInstruction(const std::shared_ptr<IRInstruction>& instr) {
-    switch (instr->opcode) {
+inline void CCodeGenerator::emitInstruction(const IRInstPtr& inst, const std::string& funcName) {
+    switch (inst->opcode) {
         case IROpcode::ADD:
         case IROpcode::SUB:
         case IROpcode::MUL:
         case IROpcode::DIV:
         case IROpcode::MOD:
         case IROpcode::NEG:
+            generateArithmetic(inst);
+            break;
+            
         case IROpcode::EQ:
         case IROpcode::NE:
         case IROpcode::LT:
         case IROpcode::LE:
         case IROpcode::GT:
         case IROpcode::GE:
+            generateComparison(inst);
+            break;
+            
         case IROpcode::AND:
         case IROpcode::OR:
         case IROpcode::NOT:
-        case IROpcode::BIT_AND:
-        case IROpcode::BIT_OR:
-        case IROpcode::BIT_XOR:
-        case IROpcode::BIT_NOT:
-        case IROpcode::SHL:
-        case IROpcode::SHR: {
-            std::string op = opcodeToOperator(instr->opcode);
-            std::string dest = translateOperand(instr->dest);
-            
-            if (instr->operands.size() == 1) {
-                std::string src = translateOperand(instr->operands[0]);
-                std::string type = instr->dest.type.empty() ? "int" : translateTypeToC(instr->dest.type);
-                emit(currentIndent() + type + " " + dest + " = " + op + src + ";");
-                typeMap_[dest] = instr->dest.type;
-            } else if (instr->operands.size() == 2) {
-                std::string left = translateOperand(instr->operands[0]);
-                std::string right = translateOperand(instr->operands[1]);
-                std::string type = instr->dest.type.empty() ? "int" : translateTypeToC(instr->dest.type);
-                
-                bool needsDeclaration = (typeMap_.find(dest) == typeMap_.end());
-                
-                if (needsDeclaration) {
-                    emit(currentIndent() + type + " " + dest + " = " + left + " " + op + " " + right + ";");
-                    typeMap_[dest] = instr->dest.type;
-                } else {
-                    emit(currentIndent() + dest + " = " + left + " " + op + " " + right + ";");
-                }
-            }
+            generateLogical(inst);
             break;
-        }
+            
+        case IROpcode::LOAD:
+        case IROpcode::STORE:
+        case IROpcode::ALLOCA:
+            generateMemoryOp(inst);
+            break;
+            
+        case IROpcode::JMP:
+        case IROpcode::JZ:
+        case IROpcode::JNZ:
+        case IROpcode::LABEL:
+        case IROpcode::RET:
+            generateControlFlow(inst, funcName);
+            break;
+            
+        case IROpcode::CALL:
+        case IROpcode::PARAM:
+            generateFunctionCall(inst);
+            break;
             
         case IROpcode::MOVE:
-        case IROpcode::COPY: {
-            std::string dest = translateOperand(instr->dest);
-            std::string src = translateOperand(instr->operands[0]);
-            
-            bool needsDeclaration = (typeMap_.find(dest) == typeMap_.end());
-            
-            if (needsDeclaration && !instr->dest.type.empty()) {
-                std::string type = translateTypeToC(instr->dest.type);
-                emit(currentIndent() + type + " " + dest + " = " + src + ";");
-                typeMap_[dest] = instr->dest.type;
-            } else {
-                emit(currentIndent() + dest + " = " + src + ";");
-            }
-            break;
-        }
-            
-        case IROpcode::LOAD: {
-            std::string dest = translateOperand(instr->dest);
-            std::string ptr = translateOperand(instr->operands[0]);
-            std::string type = translateTypeToC(instr->dest.type);
-            
-            bool needsDeclaration = (typeMap_.find(dest) == typeMap_.end());
-            if (needsDeclaration) {
-                emit(currentIndent() + type + " " + dest + " = *" + ptr + ";");
-                typeMap_[dest] = instr->dest.type;
-            } else {
-                emit(currentIndent() + dest + " = *" + ptr + ";");
-            }
-            break;
-        }
-            
-        case IROpcode::STORE: {
-            std::string ptr = translateOperand(instr->dest);
-            std::string val = translateOperand(instr->operands[0]);
-            emit(currentIndent() + "*" + ptr + " = " + val + ";");
-            break;
-        }
-            
-        case IROpcode::ALLOCA: {
-            std::string dest = translateOperand(instr->dest);
-            std::string type = translateTypeToC(instr->dest.type);
-            emit(currentIndent() + type + " " + dest + ";");
-            typeMap_[dest] = instr->dest.type;
-            break;
-        }
-            
-        case IROpcode::GEP: {
-            std::string dest = translateOperand(instr->dest);
-            std::string ptr = translateOperand(instr->operands[0]);
-            std::string idx = translateOperand(instr->operands[1]);
-            std::string type = translateTypeToC(instr->dest.type);
-            
-            bool needsDeclaration = (typeMap_.find(dest) == typeMap_.end());
-            if (needsDeclaration) {
-                emit(currentIndent() + type + " " + dest + " = " + ptr + "[" + idx + "];");
-                typeMap_[dest] = instr->dest.type;
-            } else {
-                emit(currentIndent() + dest + " = " + ptr + "[" + idx + "];");
-            }
-            break;
-        }
-            
-        case IROpcode::LABEL: {
-            std::string label = translateOperand(instr->dest);
-            functions_ << currentIndent() << label << ":;\n";
-            break;
-        }
-        
-        case IROpcode::JMP: {
-            std::string target = translateOperand(instr->dest);
-            functions_ << currentIndent() << "goto " << target << ";\n";
-            break;
-        }
-        
-        case IROpcode::JZ: {
-            std::string cond = translateOperand(instr->operands[0]);
-            std::string target = translateOperand(instr->dest);
-            functions_ << currentIndent() << "if (!" << cond << ") goto " << target << ";\n";
-            break;
-        }
-        
-        case IROpcode::JNZ: {
-            std::string cond = translateOperand(instr->operands[0]);
-            std::string target = translateOperand(instr->dest);
-            functions_ << currentIndent() << "if (" << cond << ") goto " << target << ";\n";
-            break;
-        }
-            
-        case IROpcode::CALL: {
-            std::string dest = translateOperand(instr->dest);
-            std::string func = translateOperand(instr->operands[0]);
-            
-            std::string args;
-            for (size_t i = 1; i < instr->operands.size(); ++i) {
-                if (i > 1) args += ", ";
-                args += translateOperand(instr->operands[i]);
-            }
-            
-            if (instr->dest.type != IROperand::Type::NONE) {
-                std::string type = translateTypeToC(instr->dest.type);
-                bool needsDeclaration = (typeMap_.find(dest) == typeMap_.end());
-                
-                if (needsDeclaration) {
-                    emit(currentIndent() + type + " " + dest + " = " + func + "(" + args + ");");
-                    typeMap_[dest] = instr->dest.type;
-                } else {
-                    emit(currentIndent() + dest + " = " + func + "(" + args + ");");
-                }
-            } else {
-                emit(currentIndent() + func + "(" + args + ");");
-            }
-            break;
-        }
-            
-        case IROpcode::RET:
-            if (!instr->operands.empty()) {
-                std::string value = translateOperand(instr->operands[0]);
-                emit(currentIndent() + "return " + value + ";");
-            } else {
-                emit(currentIndent() + "return;");
+        case IROpcode::COPY:
+            if (!inst->dest.isNone() && !inst->operands.empty()) {
+                std::string dest = translateOperand(inst->dest);
+                std::string src = translateOperand(inst->operands[0]);
+                emitLine(dest + " = " + src + ";");
             }
             break;
             
         case IROpcode::CAST:
-            if (instr->dest.type != IROperand::Type::NONE) {
-                emit(currentIndent() + translateTypeToC(instr->dest.type) + " " + 
-                     translateOperand(instr->dest) + " = (" + 
-                     translateTypeToC(instr->dest.type) + ")" + 
-                     translateOperand(instr->operands[0]) + ";");
+            if (!inst->dest.isNone() && !inst->operands.empty()) {
+                std::string dest = translateOperand(inst->dest);
+                std::string src = translateOperand(inst->operands[0]);
+                std::string targetType = translateType(inst->dest.dataType);
+                emitLine(dest + " = (" + targetType + ")" + src + ";");
+            }
+            break;
+            
+        case IROpcode::NOP:
+            // No operation
+            break;
+            
+        default:
+            emitLine("/* Unhandled opcode: " + opcodeToString(inst->opcode) + " */");
+            break;
+    }
+}
+
+inline std::string CCodeGenerator::translateType(const std::string& novaType) {
+    if (novaType.empty() || novaType == "void") return "void";
+    if (novaType == "int" || novaType == "integer") return "int";
+    if (novaType == "float" || novaType == "double") return "double";
+    if (novaType == "bool" || novaType == "boolean") return "bool";
+    if (novaType == "string") return "char*";
+    if (novaType == "char") return "char";
+    return "int";  // Default to int
+}
+
+inline std::string CCodeGenerator::translateOperand(const IROperand& operand) {
+    switch (operand.type) {
+        case IROperand::Type::VARIABLE:
+            return sanitizeIdentifier(operand.value);
+        case IROperand::Type::CONSTANT:
+            return operand.value;
+        case IROperand::Type::TEMPORARY:
+            return "_t_" + sanitizeIdentifier(operand.value);
+        case IROperand::Type::LABEL:
+            return sanitizeLabel(operand.value);
+        case IROperand::Type::FUNCTION:
+            return sanitizeIdentifier(operand.value);
+        case IROperand::Type::NONE:
+            return "";
+        default:
+            return operand.value;
+    }
+}
+
+inline void CCodeGenerator::generateArithmetic(const IRInstPtr& inst) {
+    if (inst->dest.isNone()) return;
+    
+    std::string dest = translateOperand(inst->dest);
+    std::string op;
+    
+    switch (inst->opcode) {
+        case IROpcode::ADD: op = "+"; break;
+        case IROpcode::SUB: op = "-"; break;
+        case IROpcode::MUL: op = "*"; break;
+        case IROpcode::DIV: op = "/"; break;
+        case IROpcode::MOD: op = "%"; break;
+        case IROpcode::NEG:
+            emitLine(dest + " = -" + translateOperand(inst->operands[0]) + ";");
+            return;
+        default: return;
+    }
+    
+    if (inst->operands.size() >= 2) {
+        std::string left = translateOperand(inst->operands[0]);
+        std::string right = translateOperand(inst->operands[1]);
+        emitLine(dest + " = " + left + " " + op + " " + right + ";");
+    }
+}
+
+inline void CCodeGenerator::generateComparison(const IRInstPtr& inst) {
+    if (inst->dest.isNone() || inst->operands.size() < 2) return;
+    
+    std::string dest = translateOperand(inst->dest);
+    std::string left = translateOperand(inst->operands[0]);
+    std::string right = translateOperand(inst->operands[1]);
+    std::string op;
+    
+    switch (inst->opcode) {
+        case IROpcode::EQ: op = "=="; break;
+        case IROpcode::NE: op = "!="; break;
+        case IROpcode::LT: op = "<"; break;
+        case IROpcode::LE: op = "<="; break;
+        case IROpcode::GT: op = ">"; break;
+        case IROpcode::GE: op = ">="; break;
+        default: return;
+    }
+    
+    emitLine(dest + " = " + left + " " + op + " " + right + ";");
+}
+
+inline void CCodeGenerator::generateLogical(const IRInstPtr& inst) {
+    if (inst->dest.isNone()) return;
+    
+    std::string dest = translateOperand(inst->dest);
+    
+    if (inst->opcode == IROpcode::NOT && !inst->operands.empty()) {
+        std::string operand = translateOperand(inst->operands[0]);
+        emitLine(dest + " = !" + operand + ";");
+    } else if (inst->operands.size() >= 2) {
+        std::string left = translateOperand(inst->operands[0]);
+        std::string right = translateOperand(inst->operands[1]);
+        std::string op = (inst->opcode == IROpcode::AND) ? "&&" : "||";
+        emitLine(dest + " = " + left + " " + op + " " + right + ";");
+    }
+}
+
+inline void CCodeGenerator::generateMemoryOp(const IRInstPtr& inst) {
+    switch (inst->opcode) {
+        case IROpcode::ALLOCA:
+            // Memory allocation
+            if (!inst->dest.isNone()) {
+                std::string dest = translateOperand(inst->dest);
+                std::string type = translateType(inst->dest.dataType);
+                emitLine(dest + " = (" + type + "*)malloc(sizeof(" + type + "));");
+            }
+            break;
+            
+        case IROpcode::LOAD:
+            // Load from memory
+            if (!inst->dest.isNone() && !inst->operands.empty()) {
+                std::string dest = translateOperand(inst->dest);
+                std::string ptr = translateOperand(inst->operands[0]);
+                emitLine(dest + " = *" + ptr + ";");
+            }
+            break;
+            
+        case IROpcode::STORE:
+            // Store to memory
+            if (inst->operands.size() >= 2) {
+                std::string value = translateOperand(inst->operands[0]);
+                std::string ptr = translateOperand(inst->operands[1]);
+                emitLine("*" + ptr + " = " + value + ";");
+            }
+            break;
+            
+        default:
+            break;
+    }
+}
+
+inline void CCodeGenerator::generateControlFlow(const IRInstPtr& inst, const std::string& funcName) {
+    switch (inst->opcode) {
+        case IROpcode::LABEL:
+            // Labels are handled at block level
+            break;
+            
+        case IROpcode::JMP:
+            if (!inst->operands.empty()) {
+                std::string target = translateOperand(inst->operands[0]);
+                emitLine("goto " + target + ";");
+            }
+            break;
+            
+        case IROpcode::JZ:
+            if (inst->operands.size() >= 2) {
+                std::string cond = translateOperand(inst->operands[0]);
+                std::string target = translateOperand(inst->operands[1]);
+                emitLine("if (!" + cond + ") goto " + target + ";");
+            }
+            break;
+            
+        case IROpcode::JNZ:
+            if (inst->operands.size() >= 2) {
+                std::string cond = translateOperand(inst->operands[0]);
+                std::string target = translateOperand(inst->operands[1]);
+                emitLine("if (" + cond + ") goto " + target + ";");
+            }
+            break;
+            
+        case IROpcode::RET:
+            if (!inst->operands.empty()) {
+                std::string value = translateOperand(inst->operands[0]);
+                emitLine("return " + value + ";");
+            } else {
+                emitLine("return;");
+            }
+            break;
+            
+        default:
+            break;
+    }
+}
+
+inline void CCodeGenerator::generateFunctionCall(const IRInstPtr& inst) {
+    switch (inst->opcode) {
+        case IROpcode::CALL:
+            if (!inst->operands.empty()) {
+                std::string funcName = translateOperand(inst->operands[0]);
+                
+                // Build argument list
+                std::string args;
+                for (size_t i = 1; i < inst->operands.size(); ++i) {
+                    if (i > 1) args += ", ";
+                    args += translateOperand(inst->operands[i]);
+                }
+                
+                if (!inst->dest.isNone()) {
+                    std::string result = translateOperand(inst->dest);
+                    emitLine(result + " = " + funcName + "(" + args + ");");
+                } else {
+                    emitLine(funcName + "(" + args + ");");
+                }
             }
             break;
             
         case IROpcode::PARAM:
-            break;
-            
-        case IROpcode::NOP:
-            break;
-            
-        case IROpcode::PHI:
+            // Parameters are handled in function signature
             break;
             
         default:
-            emit(currentIndent() + "/* Unknown opcode */");
             break;
     }
 }
 
-inline std::string CCodeGenerator::translateTypeToC(const std::string& type) const {
-    if (type.empty()) return "int";
-    
-    static const std::unordered_map<std::string, std::string> typeMap = {
-        {"int", "int"},
-        {"int32", "int32_t"},
-        {"int64", "int64_t"},
-        {"float", "float"},
-        {"float32", "float"},
-        {"float64", "double"},
-        {"double", "double"},
-        {"bool", "bool"},
-        {"boolean", "bool"},
-        {"char", "char"},
-        {"string", "char*"},
-        {"void", "void"},
-        {"auto", "auto"},
-    };
-    
-    auto it = typeMap.find(type);
-    if (it != typeMap.end()) {
-        return it->second;
-    }
-    
-    if (type.back() == '*') {
-        return translateTypeToC(type.substr(0, type.size() - 1)) + "*";
-    }
-    
-    size_t bracketPos = type.find('[');
-    if (bracketPos != std::string::npos) {
-        return translateTypeToC(type.substr(0, bracketPos)) + type.substr(bracketPos);
-    }
-    
-    return type;
+inline void CCodeGenerator::emit(const std::string& code) {
+    output << getIndent() << code << "\n";
 }
 
-inline std::string CCodeGenerator::translateOperand(const IROperand& op) const {
-    switch (op.type) {
-        case IROperand::Type::VARIABLE:
-            return op.value;
-            
-        case IROperand::Type::TEMP:
-            return op.value;
-            
-        case IROperand::Type::CONSTANT:
-            return op.value;
-            
-        case IROperand::Type::LABEL: {
-            std::string label = op.value;
-            if (label[0] == '@') {
-                label = label.substr(1);
-            }
-            return label;
+inline void CCodeGenerator::emitLine(const std::string& code) {
+    if (!code.empty()) {
+        output << getIndent() << code << "\n";
+    } else {
+        output << "\n";
+    }
+}
+
+inline std::string CCodeGenerator::sanitizeLabel(const std::string& label) {
+    std::string result = label;
+    // Replace special characters with underscores
+    for (char& c : result) {
+        if (!isalnum(c) && c != '_') {
+            c = '_';
         }
-            
-        case IROperand::Type::FUNCTION:
-            return op.value;
-            
-        case IROperand::Type::NONE:
-        default:
-            return "";
     }
+    // Ensure it starts with a letter
+    if (!result.empty() && isdigit(result[0])) {
+        result = "L_" + result;
+    }
+    return result;
 }
 
-inline void CCodeGenerator::emit(const std::string& line) {
-    functions_ << line << "\n";
-}
-
-inline void CCodeGenerator::emitInclude(const std::string& header) {
-    includes_.push_back("#include <" + header + ">");
-}
-
-inline void CCodeGenerator::emitGlobal(const std::string& decl) {
-    globals_.push_back(decl);
-}
-
-inline std::string CCodeGenerator::opcodeToOperator(IROpcode op) const {
-    static const std::unordered_map<IROpcode, std::string> opMap = {
-        {IROpcode::ADD, "+"},
-        {IROpcode::SUB, "-"},
-        {IROpcode::MUL, "*"},
-        {IROpcode::DIV, "/"},
-        {IROpcode::MOD, "%"},
-        {IROpcode::NEG, "-"},
-        {IROpcode::EQ, "=="},
-        {IROpcode::NE, "!="},
-        {IROpcode::LT, "<"},
-        {IROpcode::LE, "<="},
-        {IROpcode::GT, ">"},
-        {IROpcode::GE, ">="},
-        {IROpcode::AND, "&&"},
-        {IROpcode::OR, "||"},
-        {IROpcode::NOT, "!"},
-        {IROpcode::BIT_AND, "&"},
-        {IROpcode::BIT_OR, "|"},
-        {IROpcode::BIT_XOR, "^"},
-        {IROpcode::BIT_NOT, "~"},
-        {IROpcode::SHL, "<<"},
-        {IROpcode::SHR, ">>"},
-    };
-    
-    auto it = opMap.find(op);
-    return it != opMap.end() ? it->second : "?";
+inline std::string CCodeGenerator::sanitizeIdentifier(const std::string& name) {
+    std::string result = name;
+    // Replace special characters with underscores
+    for (char& c : result) {
+        if (!isalnum(c) && c != '_') {
+            c = '_';
+        }
+    }
+    // Ensure it doesn't start with a digit
+    if (!result.empty() && isdigit(result[0])) {
+        result = "_" + result;
+    }
+    return result;
 }
 
 } // namespace codegen

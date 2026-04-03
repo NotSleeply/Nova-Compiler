@@ -239,10 +239,12 @@ int main(int argc, char* argv[]) {
     }
     
     std::string sourceFile;
+    std::string outputFile;
     bool lexOnly = false;
     bool parseOnly = false;
     bool semanticOnly = false;
     bool irOnly = false;
+    bool codegenOnly = false;
     
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
