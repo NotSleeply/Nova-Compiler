@@ -373,6 +373,7 @@ inline std::string TypeChecker::typeToString(const TypePtr& type) {
 
 inline TypePtr TypeChecker::getComparisonResultType(const TypePtr& left, 
                                                      const TypePtr& right) {
+    (void)right; // Suppress unused parameter warning - both types needed for comparison
     return createPrimitiveType(PrimitiveTypeKind::BOOL, left->location);
 }
 

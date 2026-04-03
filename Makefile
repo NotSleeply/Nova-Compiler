@@ -21,10 +21,23 @@ OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 # Target executable
 TARGET = $(BIN_DIR)/novac
 
-# Test files
+# Test files - compile separately to avoid symbol conflicts
 TEST_DIR = tests
-TEST_SOURCES = $(wildcard $(TEST_DIR)/**/*.cpp)
+TEST_SOURCES = $(TEST_DIR)/test_lexer.cpp \
+               $(TEST_DIR)/test_parser.cpp \
+               $(TEST_DIR)/test_semantic.cpp \
+               $(TEST_DIR)/test_ir.cpp \
+               $(TEST_DIR)/test_codegen.cpp \
+               $(TEST_DIR)/test_simple.cpp
 TEST_TARGET = $(BIN_DIR)/nova_tests
+
+# Separate test executables
+TEST_BINS = $(BIN_DIR)/test_lexer \
+            $(BIN_DIR)/test_parser \
+            $(BIN_DIR)/test_semantic \
+            $(BIN_DIR)/test_ir \
+            $(BIN_DIR)/test_codegen \
+            $(BIN_DIR)/test_simple
 
 # Example files
 EXAMPLE_DIR = examples
@@ -63,12 +76,28 @@ clean:
 
 # Run tests
 .PHONY: test
-test: $(TEST_TARGET)
-	./$(TEST_TARGET)
-
-# Build tests
-$(TEST_TARGET): $(TEST_SOURCES) $(filter-out $(BUILD_DIR)/main.o,$(OBJECTS)) | $(BIN_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -o $@ $(LDFLAGS)
+test:
+	@echo "Compiling tests..."
+	@mkdir -p $(BIN_DIR)
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_simple.cpp -o $(BIN_DIR)/test_simple && echo "✓ test_simple" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_lexer.cpp -o $(BIN_DIR)/test_lexer && echo "✓ test_lexer" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_parser.cpp -o $(BIN_DIR)/test_parser && echo "✓ test_parser" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_semantic.cpp -o $(BIN_DIR)/test_semantic && echo "✓ test_semantic" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_ir.cpp -o $(BIN_DIR)/test_ir && echo "✓ test_ir" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_codegen.cpp -o $(BIN_DIR)/test_codegen && echo "✓ test_codegen" || exit 1
+	@echo ""
+	@echo "=========================================="
+	@echo "Running tests..."
+	@echo "=========================================="
+	@for test in test_simple test_lexer test_parser test_semantic test_ir test_codegen; do \
+		echo ""; \
+		echo "--- Running $$test ---"; \
+		./$(BIN_DIR)/$$test || exit 1; \
+	done
+	@echo ""
+	@echo "=========================================="
+	@echo "✅ All tests passed!"
+	@echo "=========================================="
 
 # Run an example
 .PHONY: run-example

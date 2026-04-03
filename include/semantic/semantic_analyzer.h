@@ -240,6 +240,7 @@ inline void SemanticAnalyzer::analyzeStructDecl(
     const std::shared_ptr<StructDecl>& struc) {
     // Struct analysis would involve checking field types, etc.
     // For now, we've already registered it in the first pass
+    (void)struc; // Suppress unused parameter warning - TODO: implement full struct analysis
 }
 
 inline void SemanticAnalyzer::analyzeStatement(const StmtPtr& stmt) {

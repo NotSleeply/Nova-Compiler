@@ -624,7 +624,8 @@ inline ExprPtr Parser::parsePrimary() {
     }
     if (match({TokenType::CHAR_LITERAL})) {
         char value = std::get<char>(previous().value);
-        // Return char literal
+        (void)value; // Suppress unused variable warning
+        // Return char literal - TODO
     }
     
     if (match({TokenType::IDENTIFIER})) {

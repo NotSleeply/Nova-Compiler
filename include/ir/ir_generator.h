@@ -185,6 +185,7 @@ inline IRModulePtr IRGenerator::generate(const std::shared_ptr<Program>& program
 }
 
 inline std::string IRGenerator::newTemp(const std::string& type) {
+    (void)type; // Suppress unused parameter warning - used for temp naming convention
     return "t" + std::to_string(tempCounter_++);
 }
 
@@ -718,11 +719,12 @@ inline void IRGenerator::processFunctionDecl(const std::shared_ptr<FunctionDecl>
 
 inline void IRGenerator::processStructDecl(const std::shared_ptr<StructDecl>& structDecl) {
     // 结构体声明主要用于类型信息，IR层面暂不处理
-    // 在后续优化中可以添加结构体布局信息
+    (void)structDecl; // Suppress unused parameter warning - TODO: add struct layout info
 }
 
 inline void IRGenerator::processEnumDecl(const std::shared_ptr<EnumDecl>& enumDecl) {
     // 枚举声明主要用于类型信息，IR层面暂不处理
+    (void)enumDecl; // Suppress unused parameter warning - TODO: add enum support
 }
 
 inline std::string IRGenerator::typeToString(const TypePtr& type) {

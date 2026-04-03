@@ -50,23 +50,23 @@ TEST_CASE("Lexer recognizes all keywords", "[lexer][keywords]") {
     
     REQUIRE(tokens.size() == 18);  // 17 keywords + EOF
     
-    CHECK(tokens[0].type == TokenType::FN);
-    CHECK(tokens[1].type == TokenType::LET);
-    CHECK(tokens[2].type == TokenType::CONST);
-    CHECK(tokens[3].type == TokenType::IF);
-    CHECK(tokens[4].type == TokenType::ELSE);
-    CHECK(tokens[5].type == TokenType::WHILE);
-    CHECK(tokens[6].type == TokenType::FOR);
-    CHECK(tokens[7].type == TokenType::RETURN);
-    CHECK(tokens[8].type == TokenType::STRUCT);
-    CHECK(tokens[9].type == TokenType::ENUM);
-    CHECK(tokens[10].type == TokenType::TRUE_LITERAL);
-    CHECK(tokens[11].type == TokenType::FALSE_LITERAL);
-    CHECK(tokens[12].type == TokenType::VOID);
-    CHECK(tokens[13].type == TokenType::INT);
-    CHECK(tokens[14].type == TokenType::FLOAT);
-    CHECK(tokens[15].type == TokenType::STRING);
-    CHECK(tokens[16].type == TokenType::BOOL);
+    CHECK(tokens[0].type == TokenType::KW_FN);
+    CHECK(tokens[1].type == TokenType::KW_LET);
+    CHECK(tokens[2].type == TokenType::KW_CONST);
+    CHECK(tokens[3].type == TokenType::KW_IF);
+    CHECK(tokens[4].type == TokenType::KW_ELSE);
+    CHECK(tokens[5].type == TokenType::KW_WHILE);
+    CHECK(tokens[6].type == TokenType::KW_FOR);
+    CHECK(tokens[7].type == TokenType::KW_RETURN);
+    CHECK(tokens[8].type == TokenType::KW_STRUCT);
+    CHECK(tokens[9].type == TokenType::KW_ENUM);
+    CHECK(tokens[10].type == TokenType::KW_TRUE);
+    CHECK(tokens[11].type == TokenType::KW_FALSE);
+    CHECK(tokens[12].type == TokenType::KW_VOID);
+    CHECK(tokens[13].type == TokenType::KW_INT);
+    CHECK(tokens[14].type == TokenType::KW_FLOAT);
+    CHECK(tokens[15].type == TokenType::KW_STRING);
+    CHECK(tokens[16].type == TokenType::KW_BOOL);
     CHECK(tokens[17].type == TokenType::END_OF_FILE);
 }
 
@@ -101,7 +101,7 @@ TEST_CASE("Lexer distinguishes keywords from identifiers", "[lexer][identifiers]
     std::vector<Token> tokens = lexer.tokenize();
     
     REQUIRE(tokens.size() == 3);
-    CHECK(tokens[0].type == TokenType::FN);
+    CHECK(tokens[0].type == TokenType::KW_FN);
     CHECK(tokens[1].type == TokenType::IDENTIFIER);
     CHECK(std::get<std::string>(tokens[1].value) == "fnNotKeyword");
 }
@@ -133,13 +133,13 @@ TEST_CASE("Lexer recognizes floating-point literals", "[lexer][literals]") {
     REQUIRE(tokens.size() == 4);  // 3 floats + EOF
     
     CHECK(tokens[0].type == TokenType::FLOAT_LITERAL);
-    CHECK(std::get<double>(tokens[0].value) == Approx(3.14));
+    CHECK(std::get<double>(tokens[0].value) == APPROX(3.14));
     
     CHECK(tokens[1].type == TokenType::FLOAT_LITERAL);
-    CHECK(std::get<double>(tokens[1].value) == Approx(0.5));
+    CHECK(std::get<double>(tokens[1].value) == APPROX(0.5));
     
     CHECK(tokens[2].type == TokenType::FLOAT_LITERAL);
-    CHECK(std::get<double>(tokens[2].value) == Approx(123.456));
+    CHECK(std::get<double>(tokens[2].value) == APPROX(123.456));
 }
 
 TEST_CASE("Lexer recognizes string literals", "[lexer][literals]") {
@@ -199,8 +199,8 @@ TEST_CASE("Lexer recognizes boolean literals", "[lexer][literals]") {
     
     REQUIRE(tokens.size() == 3);  // 2 bools + EOF
     
-    CHECK(tokens[0].type == TokenType::TRUE_LITERAL);
-    CHECK(tokens[1].type == TokenType::FALSE_LITERAL);
+    CHECK(tokens[0].type == TokenType::KW_TRUE);
+    CHECK(tokens[1].type == TokenType::KW_FALSE);
 }
 
 // ============================================================================
@@ -213,11 +213,11 @@ TEST_CASE("Lexer recognizes arithmetic operators", "[lexer][operators]") {
     
     REQUIRE(tokens.size() == 6);  // 5 operators + EOF
     
-    CHECK(tokens[0].type == TokenType::PLUS);
-    CHECK(tokens[1].type == TokenType::MINUS);
-    CHECK(tokens[2].type == TokenType::STAR);
-    CHECK(tokens[3].type == TokenType::SLASH);
-    CHECK(tokens[4].type == TokenType::PERCENT);
+    CHECK(tokens[0].type == TokenType::OP_PLUS);
+    CHECK(tokens[1].type == TokenType::OP_MINUS);
+    CHECK(tokens[2].type == TokenType::OP_STAR);
+    CHECK(tokens[3].type == TokenType::OP_SLASH);
+    CHECK(tokens[4].type == TokenType::OP_PERCENT);
 }
 
 TEST_CASE("Lexer recognizes comparison operators", "[lexer][operators]") {
@@ -226,12 +226,12 @@ TEST_CASE("Lexer recognizes comparison operators", "[lexer][operators]") {
     
     REQUIRE(tokens.size() == 7);  // 6 operators + EOF
     
-    CHECK(tokens[0].type == TokenType::EQUAL_EQUAL);
-    CHECK(tokens[1].type == TokenType::BANG_EQUAL);
-    CHECK(tokens[2].type == TokenType::LESS);
-    CHECK(tokens[3].type == TokenType::LESS_EQUAL);
-    CHECK(tokens[4].type == TokenType::GREATER);
-    CHECK(tokens[5].type == TokenType::GREATER_EQUAL);
+    CHECK(tokens[0].type == TokenType::OP_EQUAL_EQUAL);
+    CHECK(tokens[1].type == TokenType::OP_BANG_EQUAL);
+    CHECK(tokens[2].type == TokenType::OP_LESS);
+    CHECK(tokens[3].type == TokenType::OP_LESS_EQUAL);
+    CHECK(tokens[4].type == TokenType::OP_GREATER);
+    CHECK(tokens[5].type == TokenType::OP_GREATER_EQUAL);
 }
 
 TEST_CASE("Lexer recognizes logical operators", "[lexer][operators]") {
@@ -240,9 +240,9 @@ TEST_CASE("Lexer recognizes logical operators", "[lexer][operators]") {
     
     REQUIRE(tokens.size() == 4);  // 3 operators + EOF
     
-    CHECK(tokens[0].type == TokenType::AND);
-    CHECK(tokens[1].type == TokenType::OR);
-    CHECK(tokens[2].type == TokenType::BANG);
+    CHECK(tokens[0].type == TokenType::OP_AND);
+    CHECK(tokens[1].type == TokenType::OP_OR);
+    CHECK(tokens[2].type == TokenType::OP_BANG);
 }
 
 TEST_CASE("Lexer recognizes assignment operators", "[lexer][operators]") {
@@ -251,12 +251,12 @@ TEST_CASE("Lexer recognizes assignment operators", "[lexer][operators]") {
     
     REQUIRE(tokens.size() == 7);  // 6 operators + EOF
     
-    CHECK(tokens[0].type == TokenType::EQUAL);
-    CHECK(tokens[1].type == TokenType::PLUS_EQUAL);
-    CHECK(tokens[2].type == TokenType::MINUS_EQUAL);
-    CHECK(tokens[3].type == TokenType::STAR_EQUAL);
-    CHECK(tokens[4].type == TokenType::SLASH_EQUAL);
-    CHECK(tokens[5].type == TokenType::PERCENT_EQUAL);
+    CHECK(tokens[0].type == TokenType::OP_EQUAL);
+    CHECK(tokens[1].type == TokenType::OP_PLUS_EQUAL);
+    CHECK(tokens[2].type == TokenType::OP_MINUS_EQUAL);
+    CHECK(tokens[3].type == TokenType::OP_STAR_EQUAL);
+    CHECK(tokens[4].type == TokenType::OP_SLASH_EQUAL);
+    CHECK(tokens[5].type == TokenType::OP_PERCENT_EQUAL);
 }
 
 TEST_CASE("Lexer recognizes bitwise operators", "[lexer][operators]") {
@@ -265,12 +265,12 @@ TEST_CASE("Lexer recognizes bitwise operators", "[lexer][operators]") {
     
     REQUIRE(tokens.size() == 7);  // 6 operators + EOF
     
-    CHECK(tokens[0].type == TokenType::AMPERSAND);
-    CHECK(tokens[1].type == TokenType::PIPE);
-    CHECK(tokens[2].type == TokenType::CARET);
-    CHECK(tokens[3].type == TokenType::TILDE);
-    CHECK(tokens[4].type == TokenType::LEFT_SHIFT);
-    CHECK(tokens[5].type == TokenType::RIGHT_SHIFT);
+    CHECK(tokens[0].type == TokenType::OP_AMPERSAND);
+    CHECK(tokens[1].type == TokenType::OP_PIPE);
+    CHECK(tokens[2].type == TokenType::OP_CARET);
+    CHECK(tokens[3].type == TokenType::OP_TILDE);
+    CHECK(tokens[4].type == TokenType::OP_LESS_LESS);
+    CHECK(tokens[5].type == TokenType::OP_GREATER_GREATER);
 }
 
 // ============================================================================
@@ -283,12 +283,12 @@ TEST_CASE("Lexer recognizes delimiters", "[lexer][delimiters]") {
     
     REQUIRE(tokens.size() == 12);  // 11 delimiters + EOF
     
-    CHECK(tokens[0].type == TokenType::LEFT_PAREN);
-    CHECK(tokens[1].type == TokenType::RIGHT_PAREN);
-    CHECK(tokens[2].type == TokenType::LEFT_BRACE);
-    CHECK(tokens[3].type == TokenType::RIGHT_BRACE);
-    CHECK(tokens[4].type == TokenType::LEFT_BRACKET);
-    CHECK(tokens[5].type == TokenType::RIGHT_BRACKET);
+    CHECK(tokens[0].type == TokenType::LPAREN);
+    CHECK(tokens[1].type == TokenType::RPAREN);
+    CHECK(tokens[2].type == TokenType::LBRACE);
+    CHECK(tokens[3].type == TokenType::RBRACE);
+    CHECK(tokens[4].type == TokenType::LBRACKET);
+    CHECK(tokens[5].type == TokenType::RBRACKET);
     CHECK(tokens[6].type == TokenType::SEMICOLON);
     CHECK(tokens[7].type == TokenType::COMMA);
     CHECK(tokens[8].type == TokenType::DOT);
@@ -306,9 +306,9 @@ TEST_CASE("Lexer handles single-line comments", "[lexer][comments]") {
     
     // Should not include comment tokens in the output
     REQUIRE(tokens.size() >= 8);  // let, x, =, 42, ;, let, y, ...
-    CHECK(tokens[0].type == TokenType::LET);
+    CHECK(tokens[0].type == TokenType::KW_LET);
     CHECK(tokens[4].type == TokenType::SEMICOLON);
-    CHECK(tokens[5].type == TokenType::LET);
+    CHECK(tokens[5].type == TokenType::KW_LET);
 }
 
 TEST_CASE("Lexer handles multi-line comments", "[lexer][comments]") {
@@ -317,9 +317,9 @@ TEST_CASE("Lexer handles multi-line comments", "[lexer][comments]") {
     
     // Should skip the multi-line comment
     REQUIRE(tokens.size() >= 8);
-    CHECK(tokens[0].type == TokenType::LET);
+    CHECK(tokens[0].type == TokenType::KW_LET);
     CHECK(tokens[4].type == TokenType::SEMICOLON);
-    CHECK(tokens[5].type == TokenType::LET);
+    CHECK(tokens[5].type == TokenType::KW_LET);
 }
 
 TEST_CASE("Lexer handles nested comments", "[lexer][comments]") {
@@ -327,8 +327,8 @@ TEST_CASE("Lexer handles nested comments", "[lexer][comments]") {
     std::vector<Token> tokens = lexer.tokenize();
     
     REQUIRE(tokens.size() >= 8);
-    CHECK(tokens[0].type == TokenType::LET);
-    CHECK(tokens[5].type == TokenType::LET);
+    CHECK(tokens[0].type == TokenType::KW_LET);
+    CHECK(tokens[5].type == TokenType::KW_LET);
 }
 
 // ============================================================================
@@ -342,9 +342,9 @@ TEST_CASE("Lexer tracks line numbers correctly", "[lexer][location]") {
     // Find tokens on each line
     int line1Count = 0, line2Count = 0, line3Count = 0;
     for (const auto& token : tokens) {
-        if (token.line == 1) line1Count++;
-        else if (token.line == 2) line2Count++;
-        else if (token.line == 3) line3Count++;
+        if (token.location.line == 1) line1Count++;
+        else if (token.location.line == 2) line2Count++;
+        else if (token.location.line == 3) line3Count++;
     }
     
     CHECK(line1Count > 0);
@@ -359,11 +359,11 @@ TEST_CASE("Lexer tracks column numbers correctly", "[lexer][location]") {
     REQUIRE(tokens.size() >= 5);
     
     // Check column positions
-    CHECK(tokens[0].column == 1);   // 'let'
-    CHECK(tokens[1].column == 5);   // 'x'
-    CHECK(tokens[2].column == 7);   // '='
-    CHECK(tokens[3].column == 9);   // '42'
-    CHECK(tokens[4].column == 11);  // ';'
+    CHECK(tokens[0].location.column == 1);   // 'let'
+    CHECK(tokens[1].location.column == 5);   // 'x'
+    CHECK(tokens[2].location.column == 7);   // '='
+    CHECK(tokens[3].location.column == 9);   // '42'
+    CHECK(tokens[4].location.column == 11);  // ';'
 }
 
 // ============================================================================
@@ -404,13 +404,12 @@ TEST_CASE("Lexer tokenizes function declaration", "[lexer][integration]") {
     
     REQUIRE(tokens.size() == 18);  // Count all tokens
     
-    CHECK(tokens[0].type == TokenType::FN);
+    CHECK(tokens[0].type == TokenType::KW_FN);
     CHECK(tokens[1].type == TokenType::IDENTIFIER);
-    CHECK(tokens[2].type == TokenType::LEFT_PAREN);
+    CHECK(tokens[2].type == TokenType::LPAREN);
     CHECK(tokens[3].type == TokenType::IDENTIFIER);
     CHECK(tokens[4].type == TokenType::COLON);
-    CHECK(tokens[5].type == TokenType::INT);
-    // ... etc
+    CHECK(tokens[5].type == TokenType::KW_INT);
 }
 
 TEST_CASE("Lexer tokenizes if-else statement", "[lexer][integration]") {
@@ -419,10 +418,10 @@ TEST_CASE("Lexer tokenizes if-else statement", "[lexer][integration]") {
     
     REQUIRE(tokens.size() >= 15);
     
-    CHECK(tokens[0].type == TokenType::IF);
-    CHECK(tokens[1].type == TokenType::LEFT_PAREN);
+    CHECK(tokens[0].type == TokenType::KW_IF);
+    CHECK(tokens[1].type == TokenType::LPAREN);
     CHECK(tokens[2].type == TokenType::IDENTIFIER);
-    CHECK(tokens[3].type == TokenType::GREATER);
+    CHECK(tokens[3].type == TokenType::OP_GREATER);
     CHECK(tokens[4].type == TokenType::INTEGER_LITERAL);
 }
 
@@ -433,8 +432,8 @@ TEST_CASE("Lexer tokenizes complex expression", "[lexer][integration]") {
     REQUIRE(tokens.size() >= 15);
     
     CHECK(tokens[0].type == TokenType::IDENTIFIER);
-    CHECK(tokens[1].type == TokenType::EQUAL);
-    CHECK(tokens[2].type == TokenType::LEFT_PAREN);
+    CHECK(tokens[1].type == TokenType::OP_EQUAL);
+    CHECK(tokens[2].type == TokenType::LPAREN);
     CHECK(tokens[3].type == TokenType::IDENTIFIER);
-    CHECK(tokens[4].type == TokenType::PLUS);
+    CHECK(tokens[4].type == TokenType::OP_PLUS);
 }
