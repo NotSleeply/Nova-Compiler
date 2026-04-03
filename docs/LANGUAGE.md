@@ -1,771 +1,742 @@
-# Nova 语言规范
+# Nova Language Specification
 
-**版本**: v0.2.0  
-**最后更新**: 2025-01-03
+**Version**: 0.2.0  
+**Last Updated**: 2026-04-03
 
----
+## Table of Contents
 
-## 目录
-
-1. [概述](#概述)
-2. [词法结构](#词法结构)
-3. [类型系统](#类型系统)
-4. [表达式](#表达式)
-5. [语句](#语句)
-6. [声明](#声明)
-7. [函数](#函数)
-8. [控制流](#控制流)
-9. [错误处理](#错误处理)
-10. [示例代码](#示例代码)
+1. [Introduction](#introduction)
+2. [Lexical Structure](#lexical-structure)
+3. [Types](#types)
+4. [Declarations](#declarations)
+5. [Expressions](#expressions)
+6. [Statements](#statements)
+7. [Functions](#functions)
+8. [Memory Management](#memory-management)
+9. [Standard Library](#standard-library)
 
 ---
 
-## 概述
+## Introduction
 
-Nova 是一门现代、简洁的系统编程语言，设计目标：
+Nova is a modern, statically-typed programming language designed for systems programming with a focus on safety, performance, and developer productivity. It features:
 
-- **简洁性**: 语法清晰，易于学习和使用
-- **类型安全**: 强类型系统，编译时类型检查
-- **性能**: 编译为高效的 C 代码
-- **可读性**: 强调代码可读性和可维护性
+- **Static typing** with type inference
+- **Memory safety** through ownership semantics
+- **Zero-cost abstractions**
+- **Clean, readable syntax** inspired by Rust, Swift, and Kotlin
+- **Ahead-of-time compilation** to native code via C transpilation
 
-### 设计哲学
+### Design Goals
 
-- 明确优于隐式
-- 编译时错误优于运行时错误
-- 简单的设计优于复杂的功能
-- 可读性优于简洁性
+1. **Safety First**: Catch errors at compile time, not runtime
+2. **Performance**: Zero-cost abstractions, no garbage collector
+3. **Readability**: Clear, unambiguous syntax
+4. **Simplicity**: Small core language, powerful standard library
+5. **Interoperability**: Seamless integration with C code
 
 ---
 
-## 词法结构
+## Lexical Structure
 
-### 关键字
-
-Nova 保留以下关键字：
+### Keywords
 
 ```
 fn          let         const       if          else
 while       for         return      struct      enum
 true        false       void        int         float
 string      bool        char        break       continue
-null        import      export      as          from
+match       case        default     pub         priv
+static      mut         ref         as          in
 ```
 
-### 标识符
-
-标识符规则：
-- 以字母或下划线开头
-- 后跟字母、数字或下划线
-- 区分大小写
-- 不能是关键字
+### Identifiers
 
 ```
 identifier ::= [a-zA-Z_][a-zA-Z0-9_]*
 ```
 
-示例：
-```
-myVar
-_privateVar
-CamelCase
-snake_case
-var123
-```
+**Examples**: `foo`, `_bar`, `myVar123`, `MyType`
 
-### 字面量
+### Literals
 
-#### 整数字面量
-```
-42          // 十进制
-0b1010      // 二进制
-0o755       // 八进制
-0xFF        // 十六进制
-```
-
-#### 浮点字面量
-```
-3.14
-2.71828
-1.0e10
-6.626e-34
-```
-
-#### 字符串字面量
-```
-"hello, world"
-"line 1\nline 2"
-"tab\there"
-"quote: \""
-```
-
-支持转义序列：
-- `\n` - 换行
-- `\t` - 制表符
-- `\\` - 反斜杠
-- `\"` - 双引号
-- `\0` - 空字符
-
-#### 字符字面量
-```
-'a'
-'\n'
-'\\'
-'\"'
-```
-
-#### 布尔字面量
-```
-true
-false
-```
-
-### 运算符
-
-#### 算术运算符
-```
-+   加法
--   减法
-*   乘法
-/   除法
-%   取模
-```
-
-#### 比较运算符
-```
-==  等于
-!=  不等于
-<   小于
-<=  小于等于
->   大于
->=  大于等于
-```
-
-#### 逻辑运算符
-```
-&&  逻辑与
-||  逻辑或
-!   逻辑非
-```
-
-#### 位运算符
-```
-&   按位与
-|   按位或
-^   按位异或
-~   按位取反
-<<  左移
->>  右移
-```
-
-#### 赋值运算符
-```
-=   简单赋值
-+=  加法赋值
--=  减法赋值
-*=  乘法赋值
-/=  除法赋值
-%=  取模赋值
-```
-
-#### 其他运算符
-```
-++  自增
---  自减
-?:  条件运算符
-```
-
-### 分隔符
+#### Integer Literals
 
 ```
-(   )   [   ]   {   }
-,   ;   :   .   ->
+decimal     ::= [0-9]+
+hexadecimal ::= 0x[0-9a-fA-F]+
+octal       ::= 0o[0-7]+
+binary      ::= 0b[01]+
 ```
 
-### 注释
+**Examples**: `42`, `0xFF`, `0o755`, `0b1010`
 
-#### 单行注释
-```nova
-// 这是单行注释
-let x = 10; // 行尾注释
+#### Floating-Point Literals
+
+```
+float ::= [0-9]+\.[0-9]+([eE][+-]?[0-9]+)?
 ```
 
-#### 多行注释
-```nova
-/* 
-   这是多行注释
-   可以跨越多行
-*/
+**Examples**: `3.14`, `2.5e10`, `1.0e-5`
+
+#### String Literals
+
+```
+string ::= "([^"\\]|\\.)*"
+```
+
+**Escape Sequences**:
+- `\n` - Newline
+- `\t` - Tab
+- `\\` - Backslash
+- `\"` - Double quote
+- `\0` - Null character
+- `\xHH` - Hexadecimal byte
+
+**Examples**: `"Hello, World!"`, `"Line 1\nLine 2"`
+
+#### Character Literals
+
+```
+char ::= '([^'\\]|\\.)'
+```
+
+**Examples**: `'A'`, `'\n'`, `'\x41'`
+
+#### Boolean Literals
+
+```
+boolean ::= true | false
+```
+
+### Operators
+
+```
+Arithmetic: + - * / % ** (power)
+Comparison: == != < <= > >=
+Logical:    && || !
+Bitwise:    & | ^ ~ << >>
+Assignment: = += -= *= /= %= **= &= |= ^= <<= >>=
+Other:      . -> :: ?:
+```
+
+### Delimiters
+
+```
+( ) [ ] { } , ; : ::
+```
+
+### Comments
+
+```
+// Single-line comment
+
+/*
+ * Multi-line comment
+ */
 ```
 
 ---
 
-## 类型系统
+## Types
 
-### 基本类型
+### Primitive Types
 
-#### 整数类型
-```
-int     有符号整数（平台相关，通常 32 或 64 位）
-int8    有符号 8 位整数
-int16   有符号 16 位整数
-int32   有符号 32 位整数
-int64   有符号 64 位整数
-uint    无符号整数
-uint8   无符号 8 位整数
-uint16  无符号 16 位整数
-uint32  无符号 32 位整数
-uint64  无符号 64 位整数
-```
+| Type | Description | Size | Range |
+|------|-------------|------|-------|
+| `void` | No value | 0 | N/A |
+| `int` | Signed integer | 64-bit | -2^63 to 2^63-1 |
+| `float` | Floating-point | 64-bit | IEEE 754 double |
+| `bool` | Boolean | 8-bit | `true`/`false` |
+| `char` | Unicode character | 32-bit | UTF-32 code point |
+| `string` | UTF-8 string | ptr | Variable length |
 
-#### 浮点类型
-```
-float   浮点数（通常 64 位双精度）
-f32     32 位单精度浮点
-f64     64 位双精度浮点
-```
+### Type Modifiers
 
-#### 字符和字符串
-```
-char    单个字符
-string  字符串
-```
+- `mut` - Mutable
+- `const` - Immutable (default)
+- `ref` - Reference
+- `static` - Static storage
 
-#### 布尔类型
-```
-bool    布尔值（true 或 false）
-```
+**Examples**:
 
-#### 空类型
-```
-void    无类型（用于函数返回值）
-```
-
-### 复合类型
-
-#### 数组
 ```nova
-int[10]      // 固定大小数组
-float[]      // 动态数组（未来支持）
+let x: int = 42;              // Immutable integer
+let mut y: int = 10;          // Mutable integer
+let ref z: int = &x;          // Reference to integer
+let static PI: float = 3.14;  // Static constant
 ```
 
-#### 结构体
+### Composite Types
+
+#### Structs
+
 ```nova
 struct Point {
     x: float,
-    y: float
+    y: float,
+}
+
+struct Person {
+    name: string,
+    age: int,
+    email: string,
 }
 ```
 
-#### 枚举
+#### Enums
+
 ```nova
-enum Status {
-    Ok,
-    Error,
-    Pending
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+enum Color {
+    Red,
+    Green,
+    Blue,
+    RGB(int, int, int),
 }
 ```
 
-#### 指针（未来支持）
+### Arrays
+
 ```nova
-int*         // 指向整数的指针
-void*        // 通用指针
+let arr: int[5] = [1, 2, 3, 4, 5];
+let matrix: float[3][3] = [
+    [1.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0],
+    [0.0, 0.0, 1.0],
+];
 ```
 
-### 类型别名
+### Pointers
 
 ```nova
-type Age = int;
-type Name = string;
-type Point3D = struct { x: float, y: float, z: float };
+let ptr: *int = &x;      // Raw pointer
+let ref ref_val: int = &x;  // Reference (safer)
 ```
 
-### 类型推断
-
-Nova 支持类型推断：
+### Type Aliases
 
 ```nova
-let x = 42;          // 推断为 int
-let y = 3.14;        // 推断为 float
-let z = "hello";     // 推断为 string
-let flag = true;     // 推断为 bool
+type UserID = int;
+type Matrix = float[3][3];
+type Callback = fn(int, int) -> int;
 ```
 
 ---
 
-## 表达式
+## Declarations
 
-### 字面量表达式
+### Variable Declarations
 
 ```nova
-42
-3.14
-"hello"
-'a'
-true
+// Immutable variable (type inferred)
+let x = 42;
+
+// Immutable variable (explicit type)
+let y: float = 3.14;
+
+// Mutable variable
+let mut counter = 0;
+
+// Constant (compile-time)
+const MAX_SIZE: int = 100;
+
+// Static variable (program lifetime)
+static instance_count: int = 0;
 ```
 
-### 标识符表达式
+### Function Declarations
 
 ```nova
-x
-myVar
-structure.field
-```
-
-### 算术表达式
-
-```nova
-a + b
-a - b
-a * b
-a / b
-a % b
--a
-```
-
-### 比较表达式
-
-```nova
-a == b
-a != b
-a < b
-a <= b
-a > b
-a >= b
-```
-
-### 逻辑表达式
-
-```nova
-a && b
-a || b
-!a
-```
-
-### 位运算表达式
-
-```nova
-a & b
-a | b
-a ^ b
-~a
-a << b
-a >> b
-```
-
-### 赋值表达式
-
-```nova
-a = 10
-a += 5
-a -= 3
-a *= 2
-a /= 2
-a %= 3
-```
-
-### 自增/自减表达式
-
-```nova
-a++    // 后缀自增
-++a    // 前缀自增
-a--    // 后缀自减
---a    // 前缀自减
-```
-
-### 条件表达式
-
-```nova
-condition ? value_if_true : value_if_false
-```
-
-示例：
-```nova
-let max = a > b ? a : b;
-```
-
-### 函数调用表达式
-
-```nova
-functionName(arg1, arg2, arg3)
-```
-
-### 数组访问表达式
-
-```nova
-array[index]
-```
-
-### 成员访问表达式
-
-```nova
-structure.field
-pointer->field    // 未来支持
-```
-
-### 括号表达式
-
-```nova
-(a + b) * c
-```
-
-### 运算符优先级
-
-从高到低：
-
-1. `()` `[]` `.` `->`
-2. `!` `~` `++` `--` (一元运算符)
-3. `*` `/` `%`
-4. `+` `-`
-5. `<<` `>>`
-6. `<` `<=` `>` `>=`
-7. `==` `!=`
-8. `&`
-9. `^`
-10. `|`
-11. `&&`
-12. `||`
-13. `?:` (条件运算符)
-14. `=` `+=` `-=` `*=` `/=` `%=` (赋值运算符)
-
----
-
-## 语句
-
-### 表达式语句
-
-```nova
-x = 10;
-foo();
-```
-
-### 复合语句（代码块）
-
-```nova
-{
-    let x = 10;
-    let y = 20;
-    x + y;
-}
-```
-
-### 空语句
-
-```nova
-;
-```
-
-### 声明语句
-
-```nova
-let x: int = 10;
-const PI: float = 3.14159;
-```
-
----
-
-## 声明
-
-### 变量声明
-
-#### let 声明（可变变量）
-```nova
-let x: int = 10;
-let y = 20;           // 类型推断
-let z: float;         // 延迟初始化
-z = 3.14;
-```
-
-#### const 声明（常量）
-```nova
-const PI: float = 3.14159;
-const MESSAGE = "Hello";  // 类型推断
-```
-
-### 函数声明
-
-```nova
-fn functionName(param1: type1, param2: type2) -> returnType {
-    // 函数体
-}
-```
-
-示例：
-```nova
+// Basic function
 fn add(a: int, b: int) -> int {
     return a + b;
 }
 
+// Function with no return value
 fn greet(name: string) -> void {
-    print("Hello, " + name);
+    print("Hello, " + name + "!");
 }
 
-fn getPi() -> float {
-    3.14159  // 隐式返回
-}
-```
-
-### 结构体声明
-
-```nova
-struct Point {
-    x: float,
-    y: float
-}
-
-fn main() {
-    let p = Point { x: 1.0, y: 2.0 };
-    print(p.x, p.y);
-}
-```
-
-### 枚举声明
-
-```nova
-enum Status {
-    Ok,
-    Error,
-    Pending
-}
-
-fn checkStatus(s: Status) -> void {
-    if s == Status.Ok {
-        print("OK");
-    }
-}
-```
-
----
-
-## 函数
-
-### 函数定义
-
-```nova
-fn functionName(parameters) -> returnType {
-    // 函数体
-}
-```
-
-### 参数
-
-#### 位置参数
-```nova
-fn add(a: int, b: int) -> int {
-    return a + b;
-}
-```
-
-#### 默认参数（未来支持）
-```nova
-fn greet(name: string, greeting: string = "Hello") -> void {
-    print(greeting + ", " + name);
-}
-```
-
-### 返回值
-
-#### 显式返回
-```nova
-fn max(a: int, b: int) -> int {
+// Generic function
+fn max<T>(a: T, b: T) -> T where T: Comparable {
     if a > b {
         return a;
     }
     return b;
 }
-```
 
-#### 隐式返回
-```nova
-fn add(a: int, b: int) -> int {
-    a + b  // 最后一个表达式的值作为返回值
+// Function with default parameters
+fn power(base: int, exp: int = 2) -> int {
+    // ...
 }
 ```
 
-#### 无返回值
+### Struct Declarations
+
 ```nova
-fn printMessage(msg: string) -> void {
-    print(msg);
+struct Point {
+    x: float,
+    y: float,
 }
-```
 
-### 函数调用
-
-```nova
-let result = add(10, 20);
-greet("Alice");
-```
-
-### 递归
-
-```nova
-fn factorial(n: int) -> int {
-    if n <= 1 {
-        return 1;
+// Methods
+impl Point {
+    fn new(x: float, y: float) -> Point {
+        return Point { x: x, y: y };
     }
-    return n * factorial(n - 1);
+
+    fn distance(&self, other: &Point) -> float {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        return sqrt(dx * dx + dy * dy);
+    }
+}
+```
+
+### Enum Declarations
+
+```nova
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+impl<T> Option<T> {
+    fn is_some(&self) -> bool {
+        match self {
+            Option::Some(_) => true,
+            Option::None => false,
+        }
+    }
 }
 ```
 
 ---
 
-## 控制流
+## Expressions
 
-### 条件语句
+### Arithmetic Expressions
 
-#### if 语句
 ```nova
-if condition {
-    // 执行代码
-}
+let sum = a + b;
+let diff = a - b;
+let product = a * b;
+let quotient = a / b;
+let remainder = a % b;
+let power = a ** 2;
 ```
 
-#### if-else 语句
+### Comparison Expressions
+
 ```nova
-if condition {
-    // 条件为真
+let eq = a == b;
+let ne = a != b;
+let lt = a < b;
+let le = a <= b;
+let gt = a > b;
+let ge = a >= b;
+```
+
+### Logical Expressions
+
+```nova
+let and_result = a && b;
+let or_result = a || b;
+let not_result = !a;
+```
+
+### Bitwise Expressions
+
+```nova
+let and = a & b;
+let or = a | b;
+let xor = a ^ b;
+let not = ~a;
+let left_shift = a << 2;
+let right_shift = a >> 2;
+```
+
+### Assignment Expressions
+
+```nova
+x = 42;
+x += 10;   // x = x + 10
+x -= 5;    // x = x - 5
+x *= 2;    // x = x * 2
+x /= 3;    // x = x / 3
+```
+
+### Function Calls
+
+```nova
+let result = add(10, 20);
+let greeting = greet("Alice");
+let value = compute(x, y, z);
+```
+
+### Member Access
+
+```nova
+let point = Point { x: 1.0, y: 2.0 };
+let x_coord = point.x;
+let distance = point.distance(&other);
+```
+
+### Array Access
+
+```nova
+let arr = [1, 2, 3, 4, 5];
+let first = arr[0];
+let last = arr[4];
+arr[2] = 10;
+```
+
+### Conditional Expression
+
+```nova
+let max = if a > b { a } else { b };
+let result = if x > 0 {
+    "positive"
+} else if x < 0 {
+    "negative"
 } else {
-    // 条件为假
+    "zero"
+};
+```
+
+### Cast Expression
+
+```nova
+let int_val = 42;
+let float_val = int_val as float;
+let char_code = 'A' as int;
+```
+
+---
+
+## Statements
+
+### Expression Statements
+
+```nova
+x = 10;
+add(5, 3);
+```
+
+### Block Statements
+
+```nova
+{
+    let x = 10;
+    let y = 20;
+    print(x + y);
 }
 ```
 
-#### if-else if-else 链
+### If Statements
+
 ```nova
-if condition1 {
-    // 条件1为真
-} else if condition2 {
-    // 条件2为真
+if x > 0 {
+    print("positive");
+} else if x < 0 {
+    print("negative");
 } else {
-    // 所有条件都为假
+    print("zero");
 }
 ```
 
-示例：
-```nova
-let score = 85;
-let grade: string;
+### While Statements
 
-if score >= 90 {
-    grade = "A";
-} else if score >= 80 {
-    grade = "B";
-} else if score >= 70 {
-    grade = "C";
-} else if score >= 60 {
-    grade = "D";
-} else {
-    grade = "F";
-}
-```
-
-### 循环语句
-
-#### while 循环
-```nova
-while condition {
-    // 循环体
-}
-```
-
-示例：
 ```nova
 let i = 0;
 while i < 10 {
     print(i);
-    i++;
+    i += 1;
 }
 ```
 
-#### for 循环
-```nova
-for init; condition; update {
-    // 循环体
-}
-```
+### For Statements
 
-示例：
 ```nova
-for let i = 0; i < 10; i++ {
+// C-style for loop
+for let i = 0; i < 10; i += 1 {
+    print(i);
+}
+
+// Range-based for loop
+for item in collection {
+    print(item);
+}
+
+// For loop with step
+for i in 0..10 step 2 {
     print(i);
 }
 ```
 
-#### 循环控制
-
-**break**: 跳出循环
-```nova
-while true {
-    let input = getInput();
-    if input == "quit" {
-        break;
-    }
-}
-```
-
-**continue**: 跳到下一次迭代
-```nova
-for let i = 0; i < 10; i++ {
-    if i % 2 == 0 {
-        continue;
-    }
-    print(i);  // 只打印奇数
-}
-```
-
-### 匹配语句（未来支持）
+### Match Statements
 
 ```nova
 match value {
-    pattern1 => action1,
-    pattern2 => action2,
-    _ => defaultAction
+    Option::Some(x) => print("Got: " + x),
+    Option::None => print("Nothing"),
+}
+
+match color {
+    Color::Red => print("Red"),
+    Color::Green => print("Green"),
+    Color::Blue => print("Blue"),
+    Color::RGB(r, g, b) => print("RGB(" + r + ", " + g + ", " + b + ")"),
+    _ => print("Unknown color"),
 }
 ```
 
----
-
-## 错误处理
-
-### 编译时错误
-
-编译器在以下情况会报告错误：
-
-- **词法错误**: 非法字符、未闭合的字符串等
-- **语法错误**: 语法结构错误
-- **语义错误**: 类型不匹配、未定义的标识符等
-
-示例：
-```nova
-let x: int = "string";  // 类型错误
-```
-
-### 运行时错误（未来支持）
-
-计划支持错误处理机制：
+### Return Statements
 
 ```nova
-fn divide(a: float, b: float) -> float | Error {
-    if b == 0 {
-        return Error("Division by zero");
+fn add(a: int, b: int) -> int {
+    return a + b;
+}
+
+fn early_exit(x: int) -> void {
+    if x < 0 {
+        return;
     }
-    return a / b;
+    print(x);
+}
+```
+
+### Break and Continue
+
+```nova
+while true {
+    let x = get_input();
+    if x == -1 {
+        break;
+    }
+    if x == 0 {
+        continue;
+    }
+    process(x);
 }
 ```
 
 ---
 
-## 示例代码
+## Functions
+
+### Function Parameters
+
+```nova
+// Multiple parameters
+fn add(a: int, b: int) -> int {
+    return a + b;
+}
+
+// Default parameters
+fn greet(name: string = "World") -> string {
+    return "Hello, " + name + "!";
+}
+
+// Variadic functions
+fn sum(count: int, ...) -> int {
+    // ...
+}
+```
+
+### Return Types
+
+```nova
+// Single return type
+fn get_value() -> int {
+    return 42;
+}
+
+// Multiple return types (tuple)
+fn divide(a: int, b: int) -> (int, bool) {
+    if b == 0 {
+        return (0, false);
+    }
+    return (a / b, true);
+}
+
+// No return value
+fn do_something() -> void {
+    // ...
+}
+```
+
+### Closures
+
+```nova
+let add = |a: int, b: int| -> int {
+    return a + b;
+};
+
+let multiplier = |factor: int| {
+    return |x: int| -> int {
+        return x * factor;
+    };
+};
+```
+
+### Higher-Order Functions
+
+```nova
+fn apply_twice(f: fn(int) -> int, x: int) -> int {
+    return f(f(x));
+}
+
+fn map<T, U>(arr: T[], f: fn(T) -> U) -> U[] {
+    // ...
+}
+```
+
+---
+
+## Memory Management
+
+### Ownership
+
+Nova uses ownership semantics inspired by Rust:
+
+1. **Each value has exactly one owner**
+2. **When owner goes out of scope, value is dropped**
+3. **Ownership can be transferred or borrowed**
+
+```nova
+fn take_ownership(s: string) -> void {
+    // s is dropped when function exits
+}
+
+let text = "Hello".to_string();
+take_ownership(text);
+// text is no longer valid here
+```
+
+### Borrowing
+
+```nova
+fn borrow_value(s: &string) -> void {
+    // Can read but not modify
+}
+
+fn borrow_mutably(s: &mut string) -> void {
+    // Can read and modify
+    s += " World";
+}
+
+let mut text = "Hello".to_string();
+borrow_value(&text);        // Immutable borrow
+borrow_mutably(&mut text);  // Mutable borrow
+```
+
+### Lifetimes
+
+```nova
+fn longest<'a>(x: &'a string, y: &'a string) -> &'a string {
+    if x.len() > y.len() {
+        return x;
+    }
+    return y;
+}
+```
+
+---
+
+## Standard Library
+
+### Core Types
+
+```nova
+// Option type for nullable values
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+// Result type for error handling
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+```
+
+### Collections
+
+```nova
+// Dynamic array
+let vec = Vec<int>::new();
+vec.push(1);
+vec.push(2);
+
+// Hash map
+let map = HashMap<string, int>::new();
+map.insert("one", 1);
+map.insert("two", 2);
+```
+
+### I/O
+
+```nova
+// Print to stdout
+print("Hello, World!");
+println("With newline");
+
+// Read from stdin
+let input = read_line();
+
+// File I/O
+let content = read_file("input.txt");
+write_file("output.txt", content);
+```
+
+### String Operations
+
+```nova
+let s = "Hello, World!";
+
+let length = s.len();
+let upper = s.to_upper();
+let lower = s.to_lower();
+let parts = s.split(", ");
+let joined = parts.join(" - ");
+let replaced = s.replace("World", "Nova");
+```
+
+### Math Functions
+
+```nova
+let x = abs(-42);           // 42
+let y = sqrt(16.0);         // 4.0
+let z = pow(2.0, 10.0);     // 1024.0
+let max_val = max(10, 20);  // 20
+let min_val = min(10, 20);  // 10
+```
+
+---
+
+## Example Programs
 
 ### Hello World
 
 ```nova
 fn main() -> void {
-    print("Hello, World!");
+    println("Hello, World!");
 }
 ```
 
-### 阶乘计算
+### Factorial
 
 ```nova
 fn factorial(n: int) -> int {
@@ -777,11 +748,11 @@ fn factorial(n: int) -> int {
 
 fn main() -> void {
     let result = factorial(5);
-    print("5! = " + result);
+    println("5! = " + result);
 }
 ```
 
-### 斐波那契数列
+### Fibonacci
 
 ```nova
 fn fibonacci(n: int) -> int {
@@ -792,133 +763,78 @@ fn fibonacci(n: int) -> int {
 }
 
 fn main() -> void {
-    for let i = 0; i < 10; i++ {
-        print(fibonacci(i));
+    for i in 0..10 {
+        println("fib(" + i + ") = " + fibonacci(i));
     }
 }
 ```
 
-### 结构体使用
+### Struct Usage
 
 ```nova
 struct Point {
     x: float,
-    y: float
+    y: float,
 }
 
-fn distance(p1: Point, p2: Point) -> float {
-    let dx = p2.x - p1.x;
-    let dy = p2.y - p1.y;
-    return sqrt(dx * dx + dy * dy);
+impl Point {
+    fn new(x: float, y: float) -> Point {
+        return Point { x: x, y: y };
+    }
+
+    fn distance(&self, other: &Point) -> float {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        return sqrt(dx * dx + dy * dy);
+    }
 }
 
 fn main() -> void {
-    let p1 = Point { x: 0.0, y: 0.0 };
-    let p2 = Point { x: 3.0, y: 4.0 };
-    let dist = distance(p1, p2);
-    print("Distance: " + dist);
-}
-```
-
-### 枚举使用
-
-```nova
-enum Direction {
-    North,
-    South,
-    East,
-    West
-}
-
-fn move(dir: Direction) -> void {
-    if dir == Direction.North {
-        print("Moving north");
-    } else if dir == Direction.South {
-        print("Moving south");
-    } else if dir == Direction.East {
-        print("Moving east");
-    } else {
-        print("Moving west");
-    }
+    let p1 = Point::new(0.0, 0.0);
+    let p2 = Point::new(3.0, 4.0);
+    let dist = p1.distance(&p2);
+    println("Distance: " + dist);  // 5.0
 }
 ```
 
 ---
 
-## 附录
+## Future Features
 
-### 关键字完整列表
+The following features are planned for future releases:
 
-| 关键字 | 用途 |
-|--------|------|
-| `fn` | 函数声明 |
-| `let` | 可变变量声明 |
-| `const` | 常量声明 |
-| `if` | 条件语句 |
-| `else` | 条件分支 |
-| `while` | while 循环 |
-| `for` | for 循环 |
-| `return` | 函数返回 |
-| `struct` | 结构体声明 |
-| `enum` | 枚举声明 |
-| `true` | 布尔真值 |
-| `false` | 布尔假值 |
-| `void` | 空类型 |
-| `int` | 整数类型 |
-| `float` | 浮点类型 |
-| `string` | 字符串类型 |
-| `bool` | 布尔类型 |
-| `char` | 字符类型 |
-| `break` | 跳出循环 |
-| `continue` | 继续下一次迭代 |
-| `null` | 空值（未来支持） |
-| `import` | 导入模块（未来支持） |
-| `export` | 导出符号（未来支持） |
-| `as` | 类型别名（未来支持） |
-| `from` | 模块导入源（未来支持） |
-
-### 运算符优先级表
-
-| 优先级 | 运算符 | 结合性 |
-|--------|--------|--------|
-| 1 (最高) | `()` `[]` `.` `->` | 左到右 |
-| 2 | `!` `~` `++` `--` `+` `-` (一元) | 右到左 |
-| 3 | `*` `/` `%` | 左到右 |
-| 4 | `+` `-` (二元) | 左到右 |
-| 5 | `<<` `>>` | 左到右 |
-| 6 | `<` `<=` `>` `>=` | 左到右 |
-| 7 | `==` `!=` | 左到右 |
-| 8 | `&` | 左到右 |
-| 9 | `^` | 左到右 |
-| 10 | `\|` | 左到右 |
-| 11 | `&&` | 左到右 |
-| 12 | `\|\|` | 左到右 |
-| 13 | `?:` | 右到左 |
-| 14 (最低) | `=` `+=` `-=` `*=` `/=` `%=` | 右到左 |
+1. **Pattern Matching** - Advanced pattern matching with guards
+2. **Traits** - Rust-like trait system for polymorphism
+3. **Generics** - Full generic type system
+4. **Error Handling** - Built-in Result type and error propagation
+5. **Modules** - Module system for code organization
+6. **Concurrency** - Safe concurrency primitives
+7. **Metaprogramming** - Compile-time reflection and macros
 
 ---
 
-## 未来特性
+## Version History
 
-以下特性计划在未来版本中实现：
+### v0.2.0 (Current)
+- Complete compiler frontend
+- IR generation
+- C code generation
+- Comprehensive test suite
 
-- [ ] 泛型
-- [ ] 模式匹配
-- [ ] 错误处理机制
-- [ ] 模块系统
-- [ ] 并发原语
-- [ ] 内存安全特性
-- [ ] 宏系统
-- [ ] 反射
-
----
-
-## 版本历史
-
-- **v0.2.0** (2025-01-03): 添加代码生成、完善类型系统
-- **v0.1.0** (2024-12-20): 初始版本，支持词法和语法分析
+### v0.1.0
+- Initial release
+- Lexer and parser
+- Basic semantic analysis
 
 ---
 
-**文档维护者**: Nova 编译器团队  
-**许可协议**: MIT License
+## References
+
+- [Rust Language Reference](https://doc.rust-lang.org/reference/)
+- [Swift Programming Language](https://swift.org/documentation/)
+- [Kotlin Language Specification](https://kotlinlang.org/docs/reference/)
+- [C11 Standard](https://en.cppreference.com/w/c/11)
+
+---
+
+**Note**: This specification is a work in progress. Features marked as "Future" are not yet implemented. The language syntax and semantics may evolve based on implementation experience and user feedback.

@@ -1,859 +1,1132 @@
-# Nova 编译器架构设计
+# Nova Compiler Architecture
 
-**版本**: v0.2.0  
-**最后更新**: 2025-01-03
+**Version**: 0.2.0  
+**Last Updated**: 2026-04-03
 
----
+## Table of Contents
 
-## 目录
-
-1. [概述](#概述)
-2. [整体架构](#整体架构)
-3. [编译流程](#编译流程)
-4. [模块设计](#模块设计)
-5. [数据结构](#数据结构)
-6. [错误处理](#错误处理)
-7. [性能优化](#性能优化)
-8. [扩展性设计](#扩展性设计)
-9. [测试策略](#测试策略)
-10. [未来规划](#未来规划)
-
----
-
-## 概述
-
-Nova 编译器是一个模块化、可扩展的现代编译器，采用经典的编译器设计模式，分为前端、中端和后端三个主要部分。
-
-### 设计目标
-
-- **模块化**: 各模块职责清晰，低耦合高内聚
-- **可扩展**: 易于添加新特性和新目标平台
-- **高性能**: 编译速度快，内存占用合理
-- **可测试**: 每个模块都可独立测试
-- **可维护**: 代码结构清晰，文档完善
-
-### 技术栈
-
-- **实现语言**: C++17
-- **构建系统**: Make
-- **测试框架**: Catch2 风格自定义框架
-- **CI/CD**: GitHub Actions
-- **目标平台**: C代码（transpilation）、LLVM IR、x86-64、WASM
+1. [Overview](#overview)
+2. [Design Philosophy](#design-philosophy)
+3. [Architecture Layers](#architecture-layers)
+4. [Core Components](#core-components)
+5. [Data Flow](#data-flow)
+6. [Compiler Pipeline](#compiler-pipeline)
+7. [Intermediate Representations](#intermediate-representations)
+8. [Code Generation](#code-generation)
+9. [Error Handling](#error-handling)
+10. [Testing Strategy](#testing-strategy)
+11. [Future Extensions](#future-extensions)
 
 ---
 
-## 整体架构
+## Overview
+
+Nova is a modern, multi-stage compiler designed for clarity, modularity, and extensibility. It follows traditional compiler architecture principles while incorporating modern C++ practices.
+
+### High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Nova 编译器                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
-│  │  词法分析 │→│ 语法分析  │→│ 语义分析  │→│  IR生成   │      │
-│  │  Lexer   │  │  Parser  │  │ Semantic │  │ IR Gen   │      │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘      │
-│       ↓              ↓              ↓              ↓           │
-│   Tokens          AST         Symbol Table      IR Module      │
-│                                                                 │
-│                       ┌──────────────────────┐                │
-│                       │      代码生成         │                │
-│                       │   Code Generation    │                │
-│                       └──────────────────────┘                │
-│                                ↓                               │
-│          ┌─────────────────────┼─────────────────────┐        │
-│          ↓                     ↓                     ↓         │
-│     C CodeGen            LLVM CodeGen          Native CodeGen │
-│     ───────────          ───────────          ────────────    │
-│     C 代码输出            LLVM IR 输出         x86-64 输出     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 三阶段架构
-
-#### 1. 前端（Frontend）
-- **词法分析**: 源代码 → 词元流
-- **语法分析**: 词元流 → AST
-- **语义分析**: AST + 符号表 + 类型检查
-
-#### 2. 中端（Middle-end）
-- **IR 生成**: AST → 中间表示
-- **优化**: IR 转换和优化
-
-#### 3. 后端（Backend）
-- **代码生成**: IR → 目标代码
-- **平台适配**: 不同目标平台的代码生成
-
----
-
-## 编译流程
-
-### 完整编译流程
-
-```
-源代码 (.nv)
-    ↓
-┌─────────────────┐
-│   词法分析器     │
-│   Lexer         │
-└─────────────────┘
-    ↓
-词元流 (Tokens)
-    ↓
-┌─────────────────┐
-│   语法分析器     │
-│   Parser        │
-└─────────────────┘
-    ↓
-抽象语法树 (AST)
-    ↓
-┌─────────────────┐
-│   语义分析器     │
-│   Semantic      │
-└─────────────────┘
-    ↓
-符号表 + 类型信息
-    ↓
-┌─────────────────┐
-│   IR 生成器      │
-│   IR Generator  │
-└─────────────────┘
-    ↓
-中间表示 (IR)
-    ↓
-┌─────────────────┐
-│   代码生成器     │
-│   Code Generator│
-└─────────────────┘
-    ↓
-目标代码 (.c / .ll / .s / .wasm)
-```
-
-### 分阶段编译
-
-Nova 支持分阶段编译，可以单独运行每个阶段：
-
-```bash
-# 仅词法分析
-./bin/novac --lex source.nv
-
-# 仅语法分析
-./bin/novac --parse source.nv
-
-# 仅语义分析
-./bin/novac --semantic source.nv
-
-# 仅 IR 生成
-./bin/novac --ir source.nv
-
-# 仅代码生成
-./bin/novac --codegen source.nv
+┌─────────────────────────────────────────────────────────────┐
+│                      Source Code (.nv)                       │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Lexer (Scanner)                         │
+│  - Tokenization                                              │
+│  - Lexical Analysis                                          │
+│  - Source Position Tracking                                  │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Parser                                  │
+│  - Recursive Descent Parsing                                 │
+│  - AST Construction                                          │
+│  - Syntax Error Recovery                                     │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Semantic Analyzer                         │
+│  - Type Checking                                             │
+│  - Symbol Resolution                                         │
+│  - Scope Management                                          │
+│  - Semantic Validation                                       │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    IR Generator                              │
+│  - Three-Address Code Generation                             │
+│  - Control Flow Graph Construction                           │
+│  - Basic Block Formation                                     │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Code Generator                            │
+│  - Target Selection (C/LLVM/x86-64/WASM)                     │
+│  - Instruction Mapping                                       │
+│  - Code Emission                                             │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Target Code                               │
+│  - C Source (.c)                                             │
+│  - LLVM IR (.ll)                                             │
+│  - Assembly (.s)                                             │
+│  - WebAssembly (.wasm)                                       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 模块设计
+## Design Philosophy
 
-### 1. 词法分析器 (Lexer)
+### 1. **Modularity**
+Each compiler phase is a separate module with well-defined interfaces. This allows:
+- Independent testing and development
+- Easy replacement or extension of components
+- Clear separation of concerns
 
-**职责**:
-- 将源代码转换为词元流
-- 过滤空白和注释
-- 记录词元位置信息
-- 检测词法错误
+### 2. **Clarity Over Cleverness**
+Code is written to be readable and maintainable:
+- Self-documenting code with clear naming
+- Comprehensive comments and documentation
+- Simple, straightforward algorithms
 
-**实现**:
-```cpp
-class Lexer {
-public:
-    Lexer(const std::string& source, const std::string& filename);
-    
-    std::vector<Token> tokenize();
-    
-private:
-    Token scanToken();
-    Token scanNumber();
-    Token scanString();
-    Token scanIdentifier();
-    void skipWhitespace();
-    void skipComment();
-};
-```
+### 3. **Modern C++ Practices**
+- Smart pointers for memory management
+- RAII for resource handling
+- Standard library containers and algorithms
+- Template metaprogramming where appropriate
 
-**数据结构**:
+### 4. **Error Resilience**
+The compiler continues processing even after errors:
+- Graceful error recovery
+- Multiple errors reported per compilation
+- Clear, actionable error messages
+
+### 5. **Extensibility**
+Design allows for future enhancements:
+- Plugin architecture for analysis passes
+- Support for multiple backends
+- Generic IR for optimization passes
+
+---
+
+## Architecture Layers
+
+### Layer 1: Frontend (Analysis)
+
+**Responsibility**: Transform source code into structured intermediate representation
+
+**Components**:
+- Lexer
+- Parser
+- Semantic Analyzer
+- IR Generator
+
+**Output**: Type-checked AST → Three-address IR
+
+### Layer 2: Middle-end (Optimization)
+
+**Responsibility**: Optimize IR without changing semantics
+
+**Components** (Planned):
+- Constant Folding
+- Dead Code Elimination
+- Common Subexpression Elimination
+- Loop Optimizations
+- Inlining
+
+**Output**: Optimized IR
+
+### Layer 3: Backend (Synthesis)
+
+**Responsibility**: Generate target-specific code
+
+**Components**:
+- Code Generator
+- Register Allocator (Future)
+- Instruction Scheduler (Future)
+
+**Output**: Target code (C, LLVM IR, Assembly)
+
+---
+
+## Core Components
+
+### 1. Lexer (`include/lexer/`)
+
+**Files**:
+- `lexer.h` - Lexer class definition
+- `token.h` - Token types and structures
+
+**Responsibilities**:
+- Convert character stream into tokens
+- Handle lexical errors (invalid characters, malformed literals)
+- Track source positions for error reporting
+- Filter comments and whitespace
+
+**Key Data Structures**:
+
 ```cpp
 struct Token {
-    TokenType type;           // 词元类型
-    std::string value;        // 词元值
-    SourceLocation location;  // 源码位置
+    TokenType type;        // Token category
+    std::string value;     // Lexeme
+    SourcePosition pos;    // Location in source
 };
 
-struct SourceLocation {
+struct SourcePosition {
     std::string filename;
-    int line;
-    int column;
+    size_t line;
+    size_t column;
 };
 ```
 
-**测试覆盖**:
-- 关键字识别（17 个关键字）
-- 标识符解析
-- 字面量解析（整数、浮点、字符串、字符、布尔）
-- 运算符识别
-- 分隔符识别
-- 注释处理（单行、多行）
-- 错误处理（非法字符、未闭合字符串）
+**Token Types**:
+- Keywords: `fn`, `let`, `if`, `while`, etc.
+- Literals: Integer, Float, String, Char, Bool
+- Operators: `+`, `-`, `*`, `/`, `==`, etc.
+- Delimiters: `(`, `)`, `{`, `}`, `[`, `]`
+- Identifiers: User-defined names
+- Special: EOF, ERROR
+
+**Design Patterns**:
+- **Iterator Pattern**: Lexer provides token-by-token iteration
+- **State Machine**: Handles multi-character operators and strings
 
 ---
 
-### 2. 语法分析器 (Parser)
+### 2. Parser (`include/parser/`)
 
-**职责**:
-- 将词元流转换为 AST
-- 语法结构验证
-- 错误恢复和同步
-- 构建语法树
+**Files**:
+- `parser.h` - Parser class definition
+- `ast.h` - AST node definitions
+- `ast_visitor.h` - Visitor pattern for AST traversal
 
-**实现**:
+**Responsibilities**:
+- Build Abstract Syntax Tree from token stream
+- Enforce grammar rules and operator precedence
+- Perform syntax error recovery
+- Construct semantic-rich AST nodes
+
+**Key Data Structures**:
+
 ```cpp
-class Parser {
-public:
-    Parser(const std::vector<Token>& tokens);
-    
-    ASTNodePtr parse();
-    
-private:
-    ASTNodePtr parseDeclaration();
-    ASTNodePtr parseFunctionDecl();
-    ASTNodePtr parseVariableDecl();
-    ASTNodePtr parseStatement();
-    ASTNodePtr parseExpression();
-    ASTNodePtr parseBlock();
+struct ASTNode {
+    NodeType type;
+    SourcePosition pos;
+    std::vector<ASTNodePtr> children;
+};
+
+struct FunctionDecl : ASTNode {
+    std::string name;
+    std::vector<Parameter> params;
+    TypePtr returnType;
+    BlockStmtPtr body;
+};
+
+struct BinaryExpr : ASTNode {
+    ASTNodePtr left;
+    ASTNodePtr right;
+    TokenType op;
 };
 ```
 
-**AST 节点类型**:
-```cpp
-enum class NodeType {
-    // 声明
-    FunctionDecl,
-    VariableDecl,
-    StructDecl,
-    EnumDecl,
-    
-    // 语句
-    BlockStmt,
-    IfStmt,
-    WhileStmt,
-    ForStmt,
-    ReturnStmt,
-    ExpressionStmt,
-    
-    // 表达式
-    BinaryExpr,
-    UnaryExpr,
-    LiteralExpr,
-    IdentifierExpr,
-    CallExpr,
-    ArrayExpr,
-    
-    // 类型
-    TypeNode,
-    ParameterNode
-};
+**AST Node Hierarchy**:
+
+```
+ASTNode (Base)
+├── Declaration
+│   ├── FunctionDecl
+│   ├── VarDecl
+│   ├── StructDecl
+│   └── EnumDecl
+├── Statement
+│   ├── BlockStmt
+│   ├── IfStmt
+│   ├── WhileStmt
+│   ├── ForStmt
+│   ├── ReturnStmt
+│   ├── BreakStmt
+│   └── ContinueStmt
+└── Expression
+    ├── BinaryExpr
+    ├── UnaryExpr
+    ├── LiteralExpr
+    ├── IdentifierExpr
+    ├── CallExpr
+    ├── MemberExpr
+    ├── IndexExpr
+    └── CastExpr
 ```
 
-**测试覆盖**:
-- 函数声明解析
-- 变量声明解析
-- 表达式解析（算术、比较、逻辑、赋值）
-- 语句解析（if、while、for、return）
-- 类型解析
-- 错误处理和恢复
+**Parsing Strategy**:
+- **Recursive Descent**: Hand-written parser, one function per grammar rule
+- **Pratt Parsing**: Expression parsing with operator precedence
+- **Error Recovery**: Synchronization on statement boundaries
+
+**Operator Precedence** (lowest to highest):
+
+| Level | Operators | Associativity |
+|-------|-----------|---------------|
+| 1     | `=` | Right |
+| 2     | `+=`, `-=`, `*=`, `/=` | Right |
+| 3     | `\|\|` | Left |
+| 4     | `&&` | Left |
+| 5     | `\|` | Left |
+| 6     | `^` | Left |
+| 7     | `&` | Left |
+| 8     | `==`, `!=` | Left |
+| 9     | `<`, `<=`, `>`, `>=` | Left |
+| 10    | `<<`, `>>` | Left |
+| 11    | `+`, `-` | Left |
+| 12    | `*`, `/`, `%` | Left |
+| 13    | Unary: `!`, `-`, `~` | Right |
+| 14    | `**` | Right |
+| 15    | `(`, `[`, `.`, `->` | Left |
 
 ---
 
-### 3. 语义分析器 (Semantic Analyzer)
+### 3. Semantic Analyzer (`include/semantic/`)
 
-**职责**:
-- 类型检查
-- 作用域管理
-- 符号表构建
-- 语义错误检测
+**Files**:
+- `semantic.h` - Semantic analyzer class
+- `symbol_table.h` - Symbol table implementation
+- `type_checker.h` - Type checking logic
 
-**实现**:
-```cpp
-class SemanticAnalyzer {
-public:
-    SemanticAnalyzer();
-    
-    bool analyze(const ASTNodePtr& ast);
-    const std::vector<CompilationError>& getErrors() const;
-    
-private:
-    void analyzeFunction(const FunctionDeclNode* func);
-    void analyzeVariable(const VariableDeclNode* var);
-    void analyzeStatement(const ASTNode* stmt);
-    Type analyzeExpression(const ASTNode* expr);
-    
-    void enterScope();
-    void exitScope();
-    void declareSymbol(const std::string& name, const Symbol& symbol);
-    Symbol* lookupSymbol(const std::string& name);
-};
-```
+**Responsibilities**:
+- Type checking and type inference
+- Symbol resolution and scope management
+- Detect semantic errors (undeclared variables, type mismatches)
+- Build symbol table
 
-**符号表设计**:
+**Key Data Structures**:
+
 ```cpp
 struct Symbol {
     std::string name;
     SymbolKind kind;        // Variable, Function, Type, etc.
-    Type type;
-    SourceLocation location;
-    Scope* scope;
+    TypePtr type;
+    SourcePosition declared;
+    bool is_mutable;
+    bool is_used;
 };
 
-class Scope {
-public:
-    void declare(const std::string& name, const Symbol& symbol);
-    Symbol* lookup(const std::string& name);
-    Symbol* lookupLocal(const std::string& name);
-    
-private:
-    std::unordered_map<std::string, Symbol> symbols_;
-    Scope* parent_;
+struct Scope {
+    std::map<std::string, SymbolPtr> symbols;
+    ScopePtr parent;
+    ScopeKind kind;         // Global, Function, Block, etc.
+};
+
+struct Type {
+    TypeKind kind;          // Int, Float, String, Struct, etc.
+    std::string name;
+    std::vector<TypePtr> type_params;  // For generics
 };
 ```
 
-**测试覆盖**:
-- 类型检查（基本类型、复合类型）
-- 作用域管理（全局、函数、块作用域）
-- 函数调用验证
-- 变量使用检查（未定义、未使用）
-- 控制流分析
+**Semantic Checks**:
+1. **Variable Usage**: All variables declared before use
+2. **Type Compatibility**: Assignment and operation types match
+3. **Function Calls**: Correct number and types of arguments
+4. **Control Flow**: Functions return values, break/continue in loops
+5. **Mutability**: Cannot assign to immutable variables
+6. **Scope Rules**: Proper variable shadowing and resolution
+
+**Type System**:
+
+```cpp
+enum class TypeKind {
+    Void,
+    Int,
+    Float,
+    Bool,
+    Char,
+    String,
+    Array,
+    Pointer,
+    Reference,
+    Function,
+    Struct,
+    Enum,
+    Generic,
+};
+```
 
 ---
 
-### 4. IR 生成器 (IR Generator)
+### 4. IR Generator (`include/ir/`)
 
-**职责**:
-- 将 AST 转换为中间表示
-- 生成三地址码
-- 划分基本块
-- 构建控制流图
+**Files**:
+- `ir.h` - IR structures and generator
+- `ir_printer.h` - IR visualization
 
-**实现**:
+**Responsibilities**:
+- Generate three-address code from AST
+- Build control flow graph
+- Create basic blocks
+- Allocate temporaries
+
+**Key Data Structures**:
+
 ```cpp
-class IRGenerator {
-public:
-    IRGenerator();
-    
-    IRModulePtr generate(const ASTNodePtr& ast);
-    
-private:
-    IRFuncPtr generateFunction(const FunctionDeclNode* func);
-    IRBasicBlockPtr generateStatement(const ASTNode* stmt);
-    IROperand generateExpression(const ASTNode* expr);
-    
-    IROperand emitBinaryOp(IROpcode op, IROperand lhs, IROperand rhs);
-    IROperand emitUnaryOp(IROpcode op, IROperand operand);
-    void emitBranch(IROperand cond, IRBasicBlockPtr trueBB, IRBasicBlockPtr falseBB);
-};
-```
-
-**IR 数据结构**:
-```cpp
-struct IRInstruction {
-    IROpcode opcode;              // 操作码
-    IROperand dest;               // 目标操作数
-    std::vector<IROperand> srcs;  // 源操作数
-};
-
-struct IRBasicBlock {
-    std::string label;
-    std::vector<IRInstructionPtr> instructions;
-    std::vector<IRBasicBlockPtr> predecessors;
-    std::vector<IRBasicBlockPtr> successors;
+struct IRModule {
+    std::vector<IRFuncPtr> functions;
+    std::vector<IRGlobalPtr> globals;
 };
 
 struct IRFunc {
     std::string name;
-    Type returnType;
-    std::vector<std::pair<std::string, Type>> parameters;
-    std::vector<IRBasicBlockPtr> basicBlocks;
+    TypePtr returnType;
+    std::vector<Parameter> parameters;
+    std::vector<BasicBlockPtr> basicBlocks;
 };
 
-struct IRModule {
-    std::vector<IRFuncPtr> functions;
-    std::vector<IRGlobalVarPtr> globalVars;
-};
-```
-
-**IR 操作码**:
-```cpp
-enum class IROpcode {
-    // 算术运算
-    ADD, SUB, MUL, DIV, MOD, NEG,
-    
-    // 比较运算
-    EQ, NE, LT, LE, GT, GE,
-    
-    // 逻辑运算
-    AND, OR, NOT,
-    
-    // 内存操作
-    LOAD, STORE, ALLOCA,
-    
-    // 控制流
-    JMP, JZ, JNZ, RET, LABEL,
-    
-    // 函数调用
-    CALL, PARAM,
-    
-    // 数据移动
-    MOVE, COPY, CAST
-};
-```
-
-**测试覆盖**:
-- IR 模块结构
-- 函数和基本块生成
-- 算术运算指令
-- 比较运算指令
-- 逻辑运算指令
-- 控制流指令（跳转、分支、返回）
-- 函数调用指令
-
----
-
-### 5. 代码生成器 (Code Generator)
-
-**职责**:
-- 将 IR 转换为目标代码
-- 平台相关优化
-- 代码格式化
-
-**实现**:
-```cpp
-class CodeGenerator {
-public:
-    virtual ~CodeGenerator() = default;
-    
-    virtual std::string generate(const IRModulePtr& module) = 0;
-    
-    static std::unique_ptr<CodeGenerator> create(TargetPlatform platform);
+struct BasicBlock {
+    std::string label;
+    std::vector<IRInstPtr> instructions;
+    std::vector<BasicBlockPtr> predecessors;
+    std::vector<BasicBlockPtr> successors;
 };
 
-class CCodeGenerator : public CodeGenerator {
-public:
-    std::string generate(const IRModulePtr& module) override;
-    
-private:
-    void emitHeader();
-    void emitGlobalVar(const IRGlobalVarPtr& var);
-    void emitFunction(const IRFuncPtr& func);
-    void emitBasicBlock(const IRBasicBlockPtr& block);
-    void emitInstruction(const IRInstructionPtr& inst);
-    
-    std::string translateType(const Type& type);
-    std::string translateOpcode(IROpcode opcode);
-};
-```
-
-**平台支持**:
-```cpp
-enum class TargetPlatform {
-    C,          // C 代码生成（transpilation）
-    LLVM_IR,    // LLVM IR 生成
-    X86_64,     // x86-64 汇编生成
-    WASM        // WebAssembly 生成
-};
-```
-
-**测试覆盖**:
-- C 代码输出验证
-- 类型转换正确性
-- 运算符映射正确性
-- 控制流生成
-- 函数调用生成
-- 代码质量检查
-
----
-
-## 数据结构
-
-### 核心数据结构
-
-#### Token（词元）
-```cpp
-struct Token {
-    TokenType type;
-    std::string value;
-    SourceLocation location;
-};
-```
-
-#### AST（抽象语法树）
-```cpp
-struct ASTNode {
-    NodeType type;
-    SourceLocation location;
-    std::vector<ASTNodePtr> children;
-};
-
-// 具体节点类型
-struct FunctionDeclNode : public ASTNode {
-    std::string name;
-    Type returnType;
-    std::vector<ParameterNode*> parameters;
-    BlockStmtNode* body;
-};
-```
-
-#### Symbol（符号）
-```cpp
-struct Symbol {
-    std::string name;
-    SymbolKind kind;
-    Type type;
-    SourceLocation location;
-    Scope* scope;
-};
-```
-
-#### Type（类型）
-```cpp
-struct Type {
-    TypeKind kind;              // Basic, Array, Struct, Enum, etc.
-    std::string name;
-    std::vector<Type> typeArgs; // 泛型类型参数
-    int arraySize;              // 数组大小
-};
-```
-
-#### IR（中间表示）
-```cpp
 struct IRInstruction {
-    IROpcode opcode;
-    IROperand dest;
-    std::vector<IROperand> srcs;
+    Opcode op;
+    Operand dest;
+    Operand src1;
+    Operand src2;
 };
 
-struct IROperand {
-    IROperandKind kind;         // Variable, Temporary, Constant, etc.
+struct Operand {
+    OperandKind kind;       // Variable, Temporary, Constant, Label
     std::string value;
     std::string dataType;
 };
 ```
 
+**Instruction Set**:
+
+| Category | Opcodes |
+|----------|---------|
+| Arithmetic | `ADD`, `SUB`, `MUL`, `DIV`, `MOD`, `NEG` |
+| Comparison | `EQ`, `NE`, `LT`, `LE`, `GT`, `GE` |
+| Logical | `AND`, `OR`, `NOT` |
+| Memory | `LOAD`, `STORE`, `ALLOCA`, `GEP` |
+| Control | `JMP`, `JZ`, `JNZ`, `RET`, `CALL`, `LABEL` |
+| Data | `MOVE`, `COPY`, `CAST`, `PARAM` |
+
+**IR Example**:
+
+```
+function: add
+params: a(int), b(int)
+return: int
+
+entry:
+    %t0 = ADD a, b
+    RET %t0
+```
+
 ---
 
-## 错误处理
+### 5. Code Generator (`include/codegen/`)
 
-### 错误类型
+**Files**:
+- `code_generator.h` - Code generator interface
+- `c_codegen.h` - C code generator
+
+**Responsibilities**:
+- Translate IR to target code
+- Map types and operations to target constructs
+- Generate runtime support code
+- Handle platform-specific details
+
+**Key Components**:
 
 ```cpp
-enum class ErrorType {
-    Lexical,    // 词法错误
-    Syntax,     // 语法错误
-    Semantic,   // 语义错误
-    IR,         // IR 生成错误
-    CodeGen     // 代码生成错误
+class CodeGenerator {
+public:
+    virtual ~CodeGenerator() = default;
+    virtual std::string generate(IRModulePtr module) = 0;
+    virtual std::string getTargetName() const = 0;
+};
+
+class CCodeGenerator : public CodeGenerator {
+public:
+    std::string generate(IRModulePtr module) override;
+    
+private:
+    void emitFunction(const IRFuncPtr& func);
+    void emitBasicBlock(const BasicBlockPtr& block, const std::string& funcName);
+    void emitInstruction(const IRInstPtr& inst);
+    std::string translateType(const std::string& novaType);
+    std::string translateOpcode(Opcode op);
 };
 ```
 
-### 错误结构
+**Type Mapping** (Nova → C):
+
+| Nova Type | C Type |
+|-----------|--------|
+| `int` | `long long` |
+| `float` | `double` |
+| `bool` | `int` |
+| `char` | `int` |
+| `string` | `const char*` |
+| `void` | `void` |
+
+**Operation Mapping** (IR → C):
+
+| IR Opcode | C Operator |
+|-----------|------------|
+| `ADD` | `+` |
+| `SUB` | `-` |
+| `MUL` | `*` |
+| `DIV` | `/` |
+| `MOD` | `%` |
+| `EQ` | `==` |
+| `NE` | `!=` |
+| `LT` | `<` |
+| `LE` | `<=` |
+| `GT` | `>` |
+| `GE` | `>=` |
+| `AND` | `&&` |
+| `OR` | `\|\|` |
+| `NOT` | `!` |
+
+**Code Generation Process**:
+
+1. **Header Generation**: Include standard headers
+2. **Global Variables**: Emit global variable declarations
+3. **Function Generation**:
+   - Function signature
+   - Temporary variable declarations
+   - Basic blocks with labels
+   - Instruction translation
+4. **Footer**: Any finalization code
+
+---
+
+## Data Flow
+
+```
+Source Code (string)
+     │
+     ▼
+┌─────────┐
+│  Lexer  │ Tokenize
+└────┬────┘
+     │
+     ▼
+Token Stream (vector<Token>)
+     │
+     ▼
+┌─────────┐
+│ Parser  │ Parse
+└────┬────┘
+     │
+     ▼
+AST (ASTNodePtr)
+     │
+     ▼
+┌─────────────┐
+│ Semantic    │ Analyze
+│ Analyzer    │
+└──────┬──────┘
+       │
+       ▼
+Typed AST + Symbol Table
+       │
+       ▼
+┌─────────────┐
+│ IR          │ Generate
+│ Generator   │
+└──────┬──────┘
+       │
+       ▼
+IR Module (IRModulePtr)
+       │
+       ▼
+┌─────────────┐
+│ Code        │ Emit
+│ Generator   │
+└──────┬──────┘
+       │
+       ▼
+Target Code (string)
+```
+
+---
+
+## Compiler Pipeline
+
+### Main Pipeline (`src/main.cpp`)
+
+```cpp
+int main(int argc, char* argv[]) {
+    // 1. Parse command-line arguments
+    Config config = parseArgs(argc, argv);
+    
+    // 2. Read source file
+    std::string source = readFile(config.inputFile);
+    
+    // 3. Lexical analysis
+    Lexer lexer(source, config.inputFile);
+    std::vector<Token> tokens = lexer.tokenize();
+    if (config.lexOnly) {
+        printTokens(tokens);
+        return 0;
+    }
+    
+    // 4. Syntax analysis
+    Parser parser(tokens, config.inputFile);
+    ASTNodePtr ast = parser.parse();
+    if (config.parseOnly) {
+        printAST(ast);
+        return 0;
+    }
+    
+    // 5. Semantic analysis
+    SemanticAnalyzer analyzer;
+    bool success = analyzer.analyze(ast);
+    if (!success || config.semanticOnly) {
+        printErrors(analyzer.getErrors());
+        return success ? 0 : 1;
+    }
+    
+    // 6. IR generation
+    IRGenerator irGen;
+    IRModulePtr ir = irGen.generate(ast);
+    if (config.irOnly) {
+        printIR(ir);
+        return 0;
+    }
+    
+    // 7. Code generation
+    CodeGenerator* codegen = createCodeGenerator(config.target);
+    std::string code = codegen->generate(ir);
+    
+    // 8. Write output
+    writeFile(config.outputFile, code);
+    
+    return 0;
+}
+```
+
+### Command-Line Options
+
+| Option | Description |
+|--------|-------------|
+| `--lex` | Run lexer only, print tokens |
+| `--parse` | Run parser only, print AST |
+| `--semantic` | Run semantic analysis only |
+| `--ir` | Generate and print IR |
+| `--codegen` | Generate target code |
+| `-o <file>` | Specify output file |
+| `--target <lang>` | Target language (c, llvm, x86) |
+| `--help` | Show help message |
+
+---
+
+## Intermediate Representations
+
+### Why Three-Address Code?
+
+**Advantages**:
+1. **Simplicity**: Easy to generate and transform
+2. **Machine-Independent**: Abstracts target details
+3. **Optimization-Friendly**: Clear data flow
+4. **Readability**: Human-readable format
+
+**Example Transformation**:
+
+**Source**:
+```nova
+let result = (a + b) * (c - d);
+```
+
+**AST**:
+```
+BinaryExpr(*)
+├── BinaryExpr(+)
+│   ├── Identifier(a)
+│   └── Identifier(b)
+└── BinaryExpr(-)
+    ├── Identifier(c)
+    └── Identifier(d)
+```
+
+**IR**:
+```
+%t0 = ADD a, b
+%t1 = SUB c, d
+%t2 = MUL %t0, %t1
+result = MOVE %t2
+```
+
+### Control Flow Graph
+
+**Structure**:
+- Nodes: Basic blocks
+- Edges: Control flow transfers
+
+**Example**:
+
+```
+[entry] → [if_cond] → [if_true] → [merge]
+                ↓
+           [if_false] → [merge]
+```
+
+**IR Representation**:
+
+```
+entry:
+    // ... setup code
+    JMP if_cond
+
+if_cond:
+    %cond = GT x, 0
+    JZ %cond, if_false
+
+if_true:
+    // ... true branch
+    JMP merge
+
+if_false:
+    // ... false branch
+    JMP merge
+
+merge:
+    // ... continue
+```
+
+---
+
+## Code Generation
+
+### Target Platforms
+
+#### 1. C Transpilation (Current)
+
+**Advantages**:
+- Portability: C compilers available everywhere
+- Debugging: Easy to read generated code
+- Compatibility: Seamless C interop
+- Bootstrap: No need for runtime library
+
+**Process**:
+1. Map Nova types to C types
+2. Convert IR instructions to C statements
+3. Generate function signatures
+4. Add runtime support (standard headers)
+
+**Generated Code Example**:
+
+```c
+/* Generated by Nova Compiler */
+#include <stdio.h>
+#include <stdlib.h>
+
+long long add(long long a, long long b) {
+    long long _t_t0;
+    long long _t_t1;
+    
+    _t_t0 = a + b;
+    _t_t1 = _t_t0;
+    return _t_t1;
+}
+```
+
+#### 2. LLVM IR (Planned)
+
+**Advantages**:
+- Optimization: Leverage LLVM optimization passes
+- Native Code: Direct compilation to machine code
+- Tooling: Rich ecosystem (debuggers, profilers)
+
+**Example**:
+
+```llvm
+define i64 @add(i64 %a, i64 %b) {
+entry:
+    %t0 = add i64 %a, %b
+    ret i64 %t0
+}
+```
+
+#### 3. x86-64 Assembly (Planned)
+
+**Advantages**:
+- Performance: Direct control over generated code
+- Learning: Educational for understanding assembly
+
+**Example**:
+
+```asm
+add:
+    mov rax, rdi    ; a
+    add rax, rsi    ; + b
+    ret
+```
+
+#### 4. WebAssembly (Planned)
+
+**Advantages**:
+- Portability: Run in any browser
+- Safety: Sandboxed execution
+- Size: Compact binary format
+
+**Example**:
+
+```wat
+(func $add (param $a i64) (param $b i64) (result i64)
+    local.get $a
+    local.get $b
+    i64.add)
+```
+
+---
+
+## Error Handling
+
+### Error Categories
+
+#### 1. Lexical Errors
+
+**Examples**:
+- Invalid characters: `@`, `#`, `$`
+- Malformed literals: `3.14.15`, `"unclosed string`
+- Invalid escape sequences: `\z`
+
+**Recovery**: Skip invalid character, continue tokenizing
+
+#### 2. Syntax Errors
+
+**Examples**:
+- Missing semicolons
+- Unmatched parentheses
+- Invalid statement structure
+
+**Recovery**: Synchronize to statement boundary (`;`, `}`)
+
+#### 3. Semantic Errors
+
+**Examples**:
+- Undeclared variables
+- Type mismatches
+- Wrong number of arguments
+
+**Recovery**: Continue analysis, collect multiple errors
+
+### Error Reporting
+
+**Structure**:
 
 ```cpp
 struct CompilationError {
-    ErrorType type;
+    ErrorSeverity severity;   // Error, Warning, Note
+    ErrorCode code;
     std::string message;
-    SourceLocation location;
-    std::string suggestion;  // 修复建议
+    SourcePosition location;
+    std::string sourceLine;
+    std::string hint;
 };
 ```
 
-### 错误处理策略
-
-1. **词法错误**: 立即报告，尝试恢复
-2. **语法错误**: 错误恢复和同步，继续解析
-3. **语义错误**: 收集所有错误，不中断编译
-4. **IR 错误**: 致命错误，立即停止
-5. **代码生成错误**: 致命错误，立即停止
-
-### 错误报告示例
+**Example Output**:
 
 ```
-error: type mismatch in variable declaration
-  --> examples/test.nv:10:5
+error[E0001]: undeclared variable
+  --> examples/test.nv:5:8
    |
-10 |     let x: int = "string";
-   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `string`
+5  |     let y = x + 1;
+   |            ^ undeclared here
    |
-   = help: change the type annotation to `string` or use an integer literal
+   = note: `x` has not been declared in this scope
+   = help: did you mean to declare `let x`?
+```
+
+### Error Recovery Strategy
+
+1. **Lexer**: Skip to next valid token
+2. **Parser**: Synchronize at statement/declaration boundaries
+3. **Semantic**: Continue analysis with error nodes
+4. **IR**: Skip invalid constructs
+5. **Codegen**: Report error, don't generate code
+
+---
+
+## Testing Strategy
+
+### Test Pyramid
+
+```
+        /\
+       /  \  End-to-End Tests
+      /----\ (Examples)
+     /      \
+    /--------\ Integration Tests
+   /          \ (Multi-module)
+  /------------\
+ /              \ Unit Tests
+/________________\ (Per-function)
+```
+
+### Test Coverage
+
+| Component | Unit Tests | Integration Tests | E2E Tests |
+|-----------|------------|-------------------|-----------|
+| Lexer | 100+ | 20+ | 10+ |
+| Parser | 80+ | 15+ | 10+ |
+| Semantic | 70+ | 10+ | 5+ |
+| IR Gen | 60+ | 10+ | 5+ |
+| Code Gen | 50+ | 10+ | 10+ |
+| **Total** | **360+** | **65+** | **40+** |
+
+### Test Categories
+
+#### 1. Unit Tests
+
+**Lexer Tests**:
+- Keyword recognition
+- Identifier parsing
+- Literal parsing (int, float, string, char, bool)
+- Operator and delimiter recognition
+- Comment handling
+- Error cases
+
+**Parser Tests**:
+- Expression parsing (precedence, associativity)
+- Statement parsing
+- Declaration parsing
+- Type parsing
+- Error recovery
+
+**Semantic Tests**:
+- Type checking
+- Scope resolution
+- Function call validation
+- Error detection
+
+#### 2. Integration Tests
+
+- Full compilation pipeline
+- Multiple files
+- Complex expressions
+- Real-world programs
+
+#### 3. End-to-End Tests
+
+- Example programs
+- Standard library usage
+- Generated code execution
+
+### Test Framework
+
+**Custom Catch2-style Framework**:
+
+```cpp
+TEST_CASE("Lexer recognizes all keywords", "[lexer]") {
+    Lexer lexer("fn let const if else", "test.nv");
+    auto tokens = lexer.tokenize();
+    
+    REQUIRE(tokens.size() == 6);
+    CHECK(tokens[0].type == TokenType::FN);
+    CHECK(tokens[1].type == TokenType::LET);
+}
+
+TEST_CASE("Parser handles operator precedence", "[parser]") {
+    auto ast = parse("1 + 2 * 3");
+    REQUIRE(ast != nullptr);
+    
+    // Check that multiplication binds tighter
+    CHECK(ast->isBinaryExpr());
+    CHECK(ast->op == TokenType::PLUS);
+}
 ```
 
 ---
 
-## 性能优化
+## Future Extensions
 
-### 编译速度优化
+### 1. Optimizations
 
-1. **增量编译**: 只重新编译修改的部分
-2. **并行编译**: 并行处理独立模块
-3. **内存池**: 减少 AST 节点的内存分配
-4. **字符串驻留**: 减少字符串比较开销
+**Planned Passes**:
+- Constant Folding
+- Dead Code Elimination
+- Common Subexpression Elimination
+- Loop Invariant Code Motion
+- Function Inlining
+- Tail Call Optimization
 
-### 运行时性能优化
-
-1. **IR 优化**: 常量折叠、死代码消除
-2. **平台优化**: 利用目标平台特性
-3. **内联优化**: 函数内联
-4. **循环优化**: 循环展开、循环不变量外提
-
-### 内存管理
+**Implementation**:
 
 ```cpp
-// 使用智能指针管理 AST 节点
-using ASTNodePtr = std::shared_ptr<ASTNode>;
-
-// 使用内存池减少分配开销
-class ASTAllocator {
+class OptimizationPass {
 public:
-    template<typename T, typename... Args>
-    std::shared_ptr<T> allocate(Args&&... args) {
-        return std::allocate_shared<T>(allocator_, std::forward<Args>(args)...);
-    }
-    
-private:
-    std::allocator<T> allocator_;
+    virtual ~OptimizationPass() = default;
+    virtual bool run(IRModulePtr module) = 0;
+    virtual std::string getName() const = 0;
+};
+
+class ConstantFoldingPass : public OptimizationPass {
+    bool run(IRModulePtr module) override;
+    std::string getName() const override { return "ConstantFolding"; }
 };
 ```
 
----
+### 2. Generic Types
 
-## 扩展性设计
+**Syntax**:
 
-### 添加新的 AST 节点
+```nova
+fn max<T>(a: T, b: T) -> T where T: Comparable {
+    if a > b { return a; }
+    return b;
+}
+```
 
-1. 在 `include/ast/ast.h` 中定义新节点类
-2. 在 `src/parser/parser.cpp` 中添加解析逻辑
-3. 在 `src/semantic/semantic_analyzer.cpp` 中添加语义分析
-4. 在 `src/ir/ir_generator.cpp` 中添加 IR 生成
-5. 在 `src/codegen/code_generator.cpp` 中添加代码生成
+**Implementation**:
+- Monomorphization: Generate specialized versions
+- Type erasure: Use runtime type information
 
-### 添加新的目标平台
+### 3. Traits
 
-1. 创建新的代码生成器类（继承 `CodeGenerator`）
-2. 实现类型转换函数
-3. 实现指令映射函数
-4. 在工厂方法中注册新平台
+**Syntax**:
 
-```cpp
-// 示例：添加 ARM64 后端
-class ARM64CodeGenerator : public CodeGenerator {
-public:
-    std::string generate(const IRModulePtr& module) override;
-    
-private:
-    std::string translateType(const Type& type);
-    std::string translateOpcode(IROpcode opcode);
-};
+```nova
+trait Drawable {
+    fn draw(&self) -> void;
+}
 
-// 注册到工厂
-std::unique_ptr<CodeGenerator> CodeGenerator::create(TargetPlatform platform) {
-    switch (platform) {
-        case TargetPlatform::ARM64:
-            return std::make_unique<ARM64CodeGenerator>();
+impl Drawable for Circle {
+    fn draw(&self) -> void {
         // ...
     }
 }
 ```
 
-### 添加新的 IR 优化
+### 4. Modules
 
-```cpp
-// 示例：常量折叠优化
-class ConstantFoldingPass : public IROptimizationPass {
-public:
-    void run(IRModulePtr& module) override {
-        for (auto& func : module->functions) {
-            optimizeFunction(func);
-        }
-    }
-    
-private:
-    void optimizeFunction(IRFuncPtr& func) {
-        for (auto& block : func->basicBlocks) {
-            optimizeBlock(block);
-        }
-    }
-    
-    void optimizeBlock(IRBasicBlockPtr& block) {
-        // 实现常量折叠逻辑
-    }
-};
+**Syntax**:
+
+```nova
+// math.nova
+pub module math;
+
+pub fn sqrt(x: float) -> float {
+    // ...
+}
+
+// main.nova
+use math::*;
+
+fn main() {
+    let result = sqrt(16.0);
+}
+```
+
+### 5. Concurrency
+
+**Syntax**:
+
+```nova
+async fn fetch_data(url: string) -> Result<string, Error> {
+    // ...
+}
+
+fn main() {
+    let result = await fetch_data("https://example.com");
+}
+```
+
+### 6. Metaprogramming
+
+**Syntax**:
+
+```nova
+macro generate_getters($struct_name:ident, $($field:ident),*) {
+    // Generate getter methods
+}
+
+struct Person {
+    name: string,
+    age: int,
+}
+
+generate_getters!(Person, name, age);
 ```
 
 ---
 
-## 测试策略
+## Build System
 
-### 测试层次
+### Makefile Targets
 
-```
-┌────────────────────────────────────┐
-│          端到端测试                 │
-│     (完整编译流程测试)              │
-├────────────────────────────────────┤
-│          集成测试                   │
-│     (模块间协作测试)                │
-├────────────────────────────────────┤
-│          单元测试                   │
-│     (单个模块功能测试)              │
-└────────────────────────────────────┘
-```
+```makefile
+# Build compiler
+make
 
-### 测试覆盖率目标
-
-| 模块 | 目标覆盖率 | 当前覆盖率 |
-|------|----------|-----------|
-| 词法分析 | 95%+ | 98% |
-| 语法分析 | 90%+ | 92% |
-| 语义分析 | 85%+ | 88% |
-| IR 生成 | 85%+ | 87% |
-| 代码生成 | 80%+ | 85% |
-
-### 测试类型
-
-1. **单元测试**: 每个模块独立测试
-2. **集成测试**: 模块间协作测试
-3. **回归测试**: 确保修改不破坏现有功能
-4. **性能测试**: 编译速度和生成代码性能
-5. **模糊测试**: 随机输入测试
-
-### 测试工具
-
-```bash
-# 运行所有测试
+# Run tests
 make test
 
-# 运行特定模块测试
-make test-lexer
-make test-parser
+# Clean build artifacts
+make clean
 
-# 生成覆盖率报告
-make coverage
+# Generate documentation
+make docs
 
-# 运行性能测试
-make benchmark
+# Install to /usr/local
+make install
+
+# Create distribution package
+make dist
 ```
+
+### Dependencies
+
+- **C++17**: Modern C++ features
+- **GCC/Clang**: C++ compiler
+- **Make**: Build system
 
 ---
 
-## 未来规划
+## Project Statistics
 
-### 短期目标（v0.3.0）
-
-- [ ] 改进错误提示信息
-- [ ] 添加更多优化
-- [ ] 支持更多标准库函数
-- [ ] 改进生成的代码质量
-
-### 中期目标（v0.4.0 - v0.5.0）
-
-- [ ] 添加泛型支持
-- [ ] 添加模式匹配
-- [ ] 添加错误处理机制
-- [ ] 添加模块系统
-
-### 长期目标（v1.0.0+）
-
-- [ ] LLVM 后端集成
-- [ ] 原生机器码生成
-- [ ] 并发原语支持
-- [ ] 内存安全特性
-- [ ] 宏系统
-- [ ] IDE 支持（LSP）
+| Metric | Value |
+|--------|-------|
+| Source Files | 20+ |
+| Lines of Code | 5000+ |
+| Header Files | 15+ |
+| Test Files | 5+ |
+| Test Cases | 360+ |
+| Supported Types | 10+ |
+| IR Instructions | 25+ |
+| Target Platforms | 4 (1 implemented) |
 
 ---
 
-## 附录
+## References
 
-### 文件结构
+### Compiler Design Books
+- *Compilers: Principles, Techniques, and Tools* (Dragon Book)
+- *Engineering a Compiler* by Cooper and Torczon
+- *Modern Compiler Implementation in C++* by Appel
 
-```
-Nova-Compiler/
-├── include/              # 头文件
-│   ├── ast/             # AST 定义
-│   ├── lexer/           # 词法分析器
-│   ├── parser/          # 语法分析器
-│   ├── semantic/        # 语义分析器
-│   ├── ir/              # IR 定义
-│   └── codegen/         # 代码生成器
-├── src/                 # 源文件
-│   └── main.cpp         # 主程序
-├── tests/               # 测试文件
-│   ├── test_lexer.cpp
-│   ├── test_parser.cpp
-│   ├── test_semantic.cpp
-│   ├── test_ir.cpp
-│   └── test_codegen.cpp
-├── examples/            # 示例代码
-├── docs/                # 文档
-└── Makefile             # 构建脚本
-```
+### Language References
+- [Rust Compiler](https://github.com/rust-lang/rust)
+- [Clang](https://clang.llvm.org/)
+- [Swift Compiler](https://github.com/apple/swift)
 
-### 关键接口
-
-#### Lexer 接口
-```cpp
-class Lexer {
-public:
-    Lexer(const std::string& source, const std::string& filename);
-    std::vector<Token> tokenize();
-    const std::vector<CompilationError>& getErrors() const;
-};
-```
-
-#### Parser 接口
-```cpp
-class Parser {
-public:
-    Parser(const std::vector<Token>& tokens);
-    ASTNodePtr parse();
-    const std::vector<CompilationError>& getErrors() const;
-};
-```
-
-#### SemanticAnalyzer 接口
-```cpp
-class SemanticAnalyzer {
-public:
-    bool analyze(const ASTNodePtr& ast);
-    const std::vector<CompilationError>& getErrors() const;
-};
-```
-
-#### IRGenerator 接口
-```cpp
-class IRGenerator {
-public:
-    IRModulePtr generate(const ASTNodePtr& ast);
-};
-```
-
-#### CodeGenerator 接口
-```cpp
-class CodeGenerator {
-public:
-    virtual std::string generate(const IRModulePtr& module) = 0;
-    static std::unique_ptr<CodeGenerator> create(TargetPlatform platform);
-};
-```
+### Tools
+- [LLVM Infrastructure](https://llvm.org/)
+- [ANTLR Parser Generator](https://www.antlr.org/)
 
 ---
 
-**文档维护者**: Nova 编译器团队  
-**许可协议**: MIT License
+**Note**: This architecture document reflects the current state of the Nova compiler (v0.2.0). Future features and optimizations are planned but not yet implemented. The architecture may evolve based on implementation experience and performance requirements.
