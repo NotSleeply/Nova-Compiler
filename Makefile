@@ -40,6 +40,8 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)/parser
 	@mkdir -p $(BUILD_DIR)/ast
 	@mkdir -p $(BUILD_DIR)/semantic
+	@mkdir -p $(BUILD_DIR)/ir
+	@mkdir -p $(BUILD_DIR)/codegen
 
 $(BIN_DIR):
 	@mkdir -p $(BIN_DIR)
@@ -151,4 +153,5 @@ $(BUILD_DIR)/main.o: $(SRC_DIR)/main.cpp \
                      $(INCLUDE_DIR)/ast/ast.h \
                      $(INCLUDE_DIR)/semantic/semantic_analyzer.h \
                      $(INCLUDE_DIR)/ir/ir.h \
-                     $(INCLUDE_DIR)/ir/ir_generator.h
+                     $(INCLUDE_DIR)/ir/ir_generator.h \
+                     $(INCLUDE_DIR)/codegen/code_generator.h
