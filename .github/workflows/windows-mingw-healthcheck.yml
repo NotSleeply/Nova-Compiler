@@ -1,0 +1,59 @@
+name: Windows MinGW Healthcheck
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '.github/workflows/**'
+      - 'Makefile'
+      - 'src/**'
+      - 'include/**'
+      - 'examples/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - '.github/workflows/**'
+      - 'Makefile'
+      - 'src/**'
+      - 'include/**'
+      - 'examples/**'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  windows-mingw-healthcheck:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+          static: 0
+
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          gcc --version
+          g++ --version
+          where g++ || true
+
+      - name: Build
+        shell: bash
+        run: |
+          make clean || true
+          make CXX=g++
+
+      - name: Smoke tests
+        shell: bash
+        run: |
+          ./bin/novac --lex examples/minimal.nv || bin\\novac.exe --lex examples/minimal.nv
+          ./bin/novac --parse examples/minimal.nv || bin\\novac.exe --parse examples/minimal.nv
+          ./bin/novac --semantic examples/minimal.nv || bin\\novac.exe --semantic examples/minimal.nv
