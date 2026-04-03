@@ -62,7 +62,7 @@ $(BIN_DIR):
 # Build main executable
 $(TARGET): $(OBJECTS) | $(BIN_DIR)
 	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
-	@echo "✓ Build complete: $@"
+	@echo "[OK] Build complete: $@"
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
@@ -72,19 +72,19 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 .PHONY: clean
 clean:
 	@rm -rf $(BUILD_DIR) $(BIN_DIR)
-	@echo "✓ Clean complete"
+	@echo "[OK] Clean complete"
 
 # Run tests
 .PHONY: test
 test:
 	@echo "Compiling tests..."
 	@mkdir -p $(BIN_DIR)
-	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_simple.cpp -o $(BIN_DIR)/test_simple && echo "✓ test_simple" || exit 1
-	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_lexer.cpp -o $(BIN_DIR)/test_lexer && echo "✓ test_lexer" || exit 1
-	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_parser.cpp -o $(BIN_DIR)/test_parser && echo "✓ test_parser" || exit 1
-	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_semantic.cpp -o $(BIN_DIR)/test_semantic && echo "✓ test_semantic" || exit 1
-	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_ir.cpp -o $(BIN_DIR)/test_ir && echo "✓ test_ir" || exit 1
-	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_codegen.cpp -o $(BIN_DIR)/test_codegen && echo "✓ test_codegen" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_simple.cpp -o $(BIN_DIR)/test_simple && echo "[OK] test_simple" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_lexer.cpp -o $(BIN_DIR)/test_lexer && echo "[OK] test_lexer" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_parser.cpp -o $(BIN_DIR)/test_parser && echo "[OK] test_parser" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_semantic.cpp -o $(BIN_DIR)/test_semantic && echo "[OK] test_semantic" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_ir.cpp -o $(BIN_DIR)/test_ir && echo "[OK] test_ir" || exit 1
+	@$(CXX) $(CXXFLAGS) -Iinclude tests/test_codegen.cpp -o $(BIN_DIR)/test_codegen && echo "[OK] test_codegen" || exit 1
 	@echo ""
 	@echo "=========================================="
 	@echo "Running tests..."
@@ -96,7 +96,7 @@ test:
 	done
 	@echo ""
 	@echo "=========================================="
-	@echo "✅ All tests passed!"
+	@echo "[OK] All tests passed!"
 	@echo "=========================================="
 
 # Run an example
@@ -108,7 +108,7 @@ run-example: $(TARGET)
 .PHONY: format
 format:
 	@find $(SRC_DIR) $(INCLUDE_DIR) -name '*.cpp' -o -name '*.h' | xargs clang-format -i
-	@echo "✓ Code formatted"
+	@echo "[OK] Code formatted"
 
 # Static analysis (requires cppcheck)
 .PHONY: check
@@ -119,19 +119,19 @@ check:
 .PHONY: docs
 docs:
 	doxygen Doxyfile
-	@echo "✓ Documentation generated in docs/"
+	@echo "[OK] Documentation generated in docs/"
 
 # Install to system (requires root)
 .PHONY: install
 install: $(TARGET)
 	@cp $(TARGET) /usr/local/bin/novac
-	@echo "✓ Installed to /usr/local/bin/novac"
+	@echo "[OK] Installed to /usr/local/bin/novac"
 
 # Uninstall from system
 .PHONY: uninstall
 uninstall:
 	@rm -f /usr/local/bin/novac
-	@echo "✓ Uninstalled novac"
+	@echo "[OK] Uninstalled novac"
 
 # Debug build
 .PHONY: debug
