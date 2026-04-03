@@ -467,6 +467,7 @@ inline void CCodeGenerator::generateMemoryOp(const IRInstPtr& inst) {
 }
 
 inline void CCodeGenerator::generateControlFlow(const IRInstPtr& inst, const std::string& funcName) {
+    if (!funcName.empty()) {} // Suppress unused parameter warning - used for naming context
     switch (inst->opcode) {
         case IROpcode::LABEL:
             // Labels are handled at block level

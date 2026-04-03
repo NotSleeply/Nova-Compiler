@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file test_semantic.cpp
  * @brief Unit tests for the Semantic Analyzer module
  * 
@@ -15,7 +15,7 @@
 using namespace nova;
 
 // Helper function to analyze source code
-bool analyzeSource(const std::string& source, std::vector<CompilationError>& errors) {
+bool analyzeSource(const std::string& source, std::vector<SemanticError>& errors) {
     Lexer lexer(source, "test.nv");
     std::vector<Token> tokens = lexer.tokenize();
     Parser parser(tokens);
@@ -36,7 +36,7 @@ bool analyzeSource(const std::string& source, std::vector<CompilationError>& err
 // ============================================================================
 
 TEST_CASE("Semantic analyzer checks integer type", "[semantic][types]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = 42;", errors);
     
     CHECK(result);
@@ -44,7 +44,7 @@ TEST_CASE("Semantic analyzer checks integer type", "[semantic][types]") {
 }
 
 TEST_CASE("Semantic analyzer checks float type", "[semantic][types]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: float = 3.14;", errors);
     
     CHECK(result);
@@ -52,7 +52,7 @@ TEST_CASE("Semantic analyzer checks float type", "[semantic][types]") {
 }
 
 TEST_CASE("Semantic analyzer checks string type", "[semantic][types]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let s: string = \"hello\";", errors);
     
     CHECK(result);
@@ -60,7 +60,7 @@ TEST_CASE("Semantic analyzer checks string type", "[semantic][types]") {
 }
 
 TEST_CASE("Semantic analyzer checks boolean type", "[semantic][types]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let b: bool = true;", errors);
     
     CHECK(result);
@@ -68,7 +68,7 @@ TEST_CASE("Semantic analyzer checks boolean type", "[semantic][types]") {
 }
 
 TEST_CASE("Semantic analyzer detects type mismatch", "[semantic][types][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = \"string\";", errors);
     
     CHECK_FALSE(result);
@@ -76,7 +76,7 @@ TEST_CASE("Semantic analyzer detects type mismatch", "[semantic][types][errors]"
 }
 
 TEST_CASE("Semantic analyzer detects incompatible assignment", "[semantic][types][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = 3.14;", errors);
     
     CHECK_FALSE(result);
@@ -88,7 +88,7 @@ TEST_CASE("Semantic analyzer detects incompatible assignment", "[semantic][types
 // ============================================================================
 
 TEST_CASE("Semantic analyzer checks integer addition", "[semantic][expressions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = 1 + 2;", errors);
     
     CHECK(result);
@@ -96,7 +96,7 @@ TEST_CASE("Semantic analyzer checks integer addition", "[semantic][expressions]"
 }
 
 TEST_CASE("Semantic analyzer checks integer subtraction", "[semantic][expressions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = 5 - 3;", errors);
     
     CHECK(result);
@@ -104,7 +104,7 @@ TEST_CASE("Semantic analyzer checks integer subtraction", "[semantic][expression
 }
 
 TEST_CASE("Semantic analyzer checks integer multiplication", "[semantic][expressions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = 2 * 3;", errors);
     
     CHECK(result);
@@ -112,7 +112,7 @@ TEST_CASE("Semantic analyzer checks integer multiplication", "[semantic][express
 }
 
 TEST_CASE("Semantic analyzer checks integer division", "[semantic][expressions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = 6 / 2;", errors);
     
     CHECK(result);
@@ -120,7 +120,7 @@ TEST_CASE("Semantic analyzer checks integer division", "[semantic][expressions]"
 }
 
 TEST_CASE("Semantic analyzer detects type mismatch in binary expression", "[semantic][expressions][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = 1 + \"string\";", errors);
     
     CHECK_FALSE(result);
@@ -128,7 +128,7 @@ TEST_CASE("Semantic analyzer detects type mismatch in binary expression", "[sema
 }
 
 TEST_CASE("Semantic analyzer checks comparison expressions", "[semantic][expressions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let b: bool = 1 < 2;", errors);
     
     CHECK(result);
@@ -136,7 +136,7 @@ TEST_CASE("Semantic analyzer checks comparison expressions", "[semantic][express
 }
 
 TEST_CASE("Semantic analyzer checks equality expressions", "[semantic][expressions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let b: bool = 1 == 1;", errors);
     
     CHECK(result);
@@ -144,7 +144,7 @@ TEST_CASE("Semantic analyzer checks equality expressions", "[semantic][expressio
 }
 
 TEST_CASE("Semantic analyzer checks logical expressions", "[semantic][expressions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let b: bool = true && false;", errors);
     
     CHECK(result);
@@ -156,7 +156,7 @@ TEST_CASE("Semantic analyzer checks logical expressions", "[semantic][expression
 // ============================================================================
 
 TEST_CASE("Semantic analyzer checks simple function", "[semantic][functions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> void {\n"
         "    return;\n"
@@ -169,7 +169,7 @@ TEST_CASE("Semantic analyzer checks simple function", "[semantic][functions]") {
 }
 
 TEST_CASE("Semantic analyzer checks function with parameters", "[semantic][functions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn add(a: int, b: int) -> int {\n"
         "    return a + b;\n"
@@ -182,7 +182,7 @@ TEST_CASE("Semantic analyzer checks function with parameters", "[semantic][funct
 }
 
 TEST_CASE("Semantic analyzer checks function return type", "[semantic][functions]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn getValue() -> int {\n"
         "    return 42;\n"
@@ -195,8 +195,8 @@ TEST_CASE("Semantic analyzer checks function return type", "[semantic][functions
 }
 
 TEST_CASE("Semantic analyzer detects missing return statement", "[semantic][functions][errors]") {
-    std::vector<CompilationError> errors;
-    bool result = analyzeSource(
+    std::vector<SemanticError> errors;
+    [[maybe_unused]] bool result = analyzeSource(
         "fn getValue() -> int {\n"
         "    let x: int = 42;\n"
         "}\n",
@@ -208,7 +208,7 @@ TEST_CASE("Semantic analyzer detects missing return statement", "[semantic][func
 }
 
 TEST_CASE("Semantic analyzer detects wrong return type", "[semantic][functions][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn getValue() -> int {\n"
         "    return \"string\";\n"
@@ -225,7 +225,7 @@ TEST_CASE("Semantic analyzer detects wrong return type", "[semantic][functions][
 // ============================================================================
 
 TEST_CASE("Semantic analyzer checks function call with correct arguments", "[semantic][functions][calls]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn add(a: int, b: int) -> int {\n"
         "    return a + b;\n"
@@ -241,7 +241,7 @@ TEST_CASE("Semantic analyzer checks function call with correct arguments", "[sem
 }
 
 TEST_CASE("Semantic analyzer detects wrong number of arguments", "[semantic][functions][calls][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn add(a: int, b: int) -> int {\n"
         "    return a + b;\n"
@@ -257,7 +257,7 @@ TEST_CASE("Semantic analyzer detects wrong number of arguments", "[semantic][fun
 }
 
 TEST_CASE("Semantic analyzer detects wrong argument types", "[semantic][functions][calls][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn add(a: int, b: int) -> int {\n"
         "    return a + b;\n"
@@ -273,7 +273,7 @@ TEST_CASE("Semantic analyzer detects wrong argument types", "[semantic][function
 }
 
 TEST_CASE("Semantic analyzer detects undefined function", "[semantic][functions][calls][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn test() -> void {\n"
         "    let result: int = undefinedFunction();\n"
@@ -290,7 +290,7 @@ TEST_CASE("Semantic analyzer detects undefined function", "[semantic][functions]
 // ============================================================================
 
 TEST_CASE("Semantic analyzer checks variable declaration", "[semantic][variables]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let x: int = 42;", errors);
     
     CHECK(result);
@@ -298,7 +298,7 @@ TEST_CASE("Semantic analyzer checks variable declaration", "[semantic][variables
 }
 
 TEST_CASE("Semantic analyzer detects duplicate variable declaration", "[semantic][variables][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "let x: int = 1;\n"
         "let x: int = 2;\n",
@@ -310,7 +310,7 @@ TEST_CASE("Semantic analyzer detects duplicate variable declaration", "[semantic
 }
 
 TEST_CASE("Semantic analyzer allows variable shadowing in different scopes", "[semantic][variables][scope]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "let x: int = 1;\n"
         "fn foo() -> void {\n"
@@ -328,7 +328,7 @@ TEST_CASE("Semantic analyzer allows variable shadowing in different scopes", "[s
 // ============================================================================
 
 TEST_CASE("Semantic analyzer checks variable usage", "[semantic][variables]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "let x: int = 42;\n"
         "let y: int = x;\n",
@@ -340,7 +340,7 @@ TEST_CASE("Semantic analyzer checks variable usage", "[semantic][variables]") {
 }
 
 TEST_CASE("Semantic analyzer detects undefined variable", "[semantic][variables][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource("let y: int = x;", errors);
     
     CHECK_FALSE(result);
@@ -348,7 +348,7 @@ TEST_CASE("Semantic analyzer detects undefined variable", "[semantic][variables]
 }
 
 TEST_CASE("Semantic analyzer detects variable used before declaration", "[semantic][variables][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "let y: int = x;\n"
         "let x: int = 42;\n",
@@ -364,7 +364,7 @@ TEST_CASE("Semantic analyzer detects variable used before declaration", "[semant
 // ============================================================================
 
 TEST_CASE("Semantic analyzer handles nested scopes", "[semantic][scope]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> void {\n"
         "    let x: int = 1;\n"
@@ -381,7 +381,7 @@ TEST_CASE("Semantic analyzer handles nested scopes", "[semantic][scope]") {
 }
 
 TEST_CASE("Semantic analyzer detects variable out of scope", "[semantic][scope][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> void {\n"
         "    {\n"
@@ -401,7 +401,7 @@ TEST_CASE("Semantic analyzer detects variable out of scope", "[semantic][scope][
 // ============================================================================
 
 TEST_CASE("Semantic analyzer checks if statement", "[semantic][control-flow]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> void {\n"
         "    if (true) {\n"
@@ -416,7 +416,7 @@ TEST_CASE("Semantic analyzer checks if statement", "[semantic][control-flow]") {
 }
 
 TEST_CASE("Semantic analyzer checks while statement", "[semantic][control-flow]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> void {\n"
         "    while (true) {\n"
@@ -431,7 +431,7 @@ TEST_CASE("Semantic analyzer checks while statement", "[semantic][control-flow]"
 }
 
 TEST_CASE("Semantic analyzer checks for statement", "[semantic][control-flow]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> void {\n"
         "    for (let i: int = 0; i < 10; i = i + 1) {\n"
@@ -446,7 +446,7 @@ TEST_CASE("Semantic analyzer checks for statement", "[semantic][control-flow]") 
 }
 
 TEST_CASE("Semantic analyzer detects non-boolean condition in if", "[semantic][control-flow][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> void {\n"
         "    if (42) {\n"
@@ -461,7 +461,7 @@ TEST_CASE("Semantic analyzer detects non-boolean condition in if", "[semantic][c
 }
 
 TEST_CASE("Semantic analyzer detects non-boolean condition in while", "[semantic][control-flow][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> void {\n"
         "    while (42) {\n"
@@ -480,7 +480,7 @@ TEST_CASE("Semantic analyzer detects non-boolean condition in while", "[semantic
 // ============================================================================
 
 TEST_CASE("Semantic analyzer checks complete program", "[semantic][integration]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn factorial(n: int) -> int {\n"
         "    if (n <= 1) {\n"
@@ -500,7 +500,7 @@ TEST_CASE("Semantic analyzer checks complete program", "[semantic][integration]"
 }
 
 TEST_CASE("Semantic analyzer detects multiple errors", "[semantic][integration][errors]") {
-    std::vector<CompilationError> errors;
+    std::vector<SemanticError> errors;
     bool result = analyzeSource(
         "fn foo() -> int {\n"
         "    return undefinedVar;\n"
