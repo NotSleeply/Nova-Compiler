@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/NotSleeply/Nova-Compiler)
-[![Version](https://img.shields.io/badge/version-0.1.0-orange.svg)](https://github.com/NotSleeply/Nova-Compiler/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](https://github.com/NotSleeply/Nova-Compiler/releases)
 
 [特性](#特性) • [快速开始](#快速开始) • [文档](#文档) • [贡献指南](#贡献指南) • [路线图](#路线图)
 
@@ -56,9 +56,24 @@ Nova 编译器是一个使用现代 C++ 从零构建的**编译器前端框架**
   - 声明节点（函数、变量、结构体）
   - 访问者模式支持（计划中）
 
-- 🚧 **语义分析** - 开发中
-- 🚧 **IR 生成** - 计划中
-- 🚧 **代码生成** - 计划中
+- ✅ **语义分析** - 完整的语义检查
+  - 类型检查和类型推导
+  - 作用域管理
+  - 符号表构建
+  - 错误检测和报告
+
+- ✅ **IR 生成** - 中间表示生成
+  - 三地址码表示
+  - 基本块划分
+  - 控制流图构建
+  - 函数和全局变量处理
+
+- ✅ **代码生成** - 目标代码生成
+  - C代码生成（transpilation）
+  - 类型转换（Nova类型 → C类型）
+  - 操作码映射（IR操作码 → C操作符）
+  - 支持算术、比较、逻辑、内存和控制流操作
+  - 可扩展的多平台支持（LLVM IR、x86-64、WASM）
 
 ---
 
@@ -87,7 +102,7 @@ make
 ### 使用方法
 
 ```bash
-# 完整编译
+# 完整编译（词法→语法→语义→IR→代码生成）
 ./bin/novac source.nv
 
 # 仅运行词法分析器（打印词元）
@@ -95,6 +110,23 @@ make
 
 # 仅运行语法分析器（打印 AST）
 ./bin/novac --parse source.nv
+
+# 运行语义分析
+./bin/novac --semantic source.nv
+
+# 生成并打印 IR
+./bin/novac --ir source.nv
+
+# 生成目标代码（C代码）
+./bin/novac --codegen source.nv
+
+# 生成目标代码到指定文件
+./bin/novac --codegen -o output.c source.nv
+
+# 编译并执行生成的C代码
+./bin/novac source.nv
+gcc -o program source.nv.c
+./program
 
 # 显示帮助
 ./bin/novac --help
