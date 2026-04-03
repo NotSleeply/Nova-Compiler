@@ -6,6 +6,7 @@
  * testing instruction generation, basic blocks, and control flow.
  */
 
+#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 #include "ir/ir_generator.h"
 #include "semantic/semantic_analyzer.h"

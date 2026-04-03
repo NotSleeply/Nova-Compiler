@@ -6,6 +6,7 @@
  * testing type checking, scope management, and error detection.
  */
 
+#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 #include "semantic/semantic_analyzer.h"
 #include "parser/parser.h"

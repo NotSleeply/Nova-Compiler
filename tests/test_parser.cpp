@@ -3,6 +3,7 @@
  * @brief Unit tests for the Parser module (simplified)
  */
 
+#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 #include "parser/parser.h"
 #include "lexer/lexer.h"
