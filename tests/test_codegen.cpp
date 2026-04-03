@@ -6,6 +6,7 @@
  * testing C code output, type translation, and instruction mapping.
  */
 
+#define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 #include "codegen/code_generator.h"
 #include "ir/ir_generator.h"
