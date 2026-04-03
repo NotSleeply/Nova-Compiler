@@ -3,23 +3,23 @@ name: Windows MinGW Healthcheck
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * 1'
+    - cron: "0 3 * * 1"
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - '.github/workflows/**'
-      - 'Makefile'
-      - 'src/**'
-      - 'include/**'
-      - 'examples/**'
+      - ".github/workflows/**"
+      - "Makefile"
+      - "src/**"
+      - "include/**"
+      - "examples/**"
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - '.github/workflows/**'
-      - 'Makefile'
-      - 'src/**'
-      - 'include/**'
-      - 'examples/**'
+      - ".github/workflows/**"
+      - "Makefile"
+      - "src/**"
+      - "include/**"
+      - "examples/**"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up MinGW
         uses: egor-tensin/setup-mingw@v2
