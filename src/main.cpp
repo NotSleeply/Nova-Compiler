@@ -23,6 +23,7 @@
 #include "semantic/semantic_analyzer.h"
 #include "ir/ir.h"
 #include "ir/ir_generator.h"
+#include "codegen/code_generator.h"
 
 using namespace nova;
 
@@ -50,6 +51,8 @@ Examples:
   )" << programName << R"( --parse example.nv
   )" << programName << R"( --semantic example.nv
   )" << programName << R"( --ir example.nv
+  )" << programName << R"( --codegen example.nv
+  )" << programName << R"( --codegen -o output.c example.nv
 
 For more information, visit: https://github.com/NotSleeply/Nova-Compiler
 )" << std::endl;
@@ -152,6 +155,11 @@ int runSemantic(const std::string& source, const std::string& filename);
 int generateIR(const std::string& source, const std::string& filename);
 
 /**
+ * @brief Generate target code
+ */
+int generateCode(const std::string& source, const std::string& filename, const std::string& outputFile);
+
+/**
  * @brief Full compilation pipeline
  */
 int compile(const std::string& source, const std::string& filename) {
@@ -188,8 +196,26 @@ int compile(const std::string& source, const std::string& filename) {
         }
         std::cout << "  ✓ Semantic analysis passed" << std::endl;
         
-        // Phase 4: Code Generation (TODO)
-        std::cout << "Phase 4: Code Generation... (Not implemented yet)" << std::endl;
+        // Phase 4: IR Generation
+        std::cout << "Phase 4: IR Generation..." << std::endl;
+        IRGenerator irGen;
+        auto irModule = irGen.generate(program);
+        std::cout << "  ✓ IR generated successfully" << std::endl;
+        
+        // Phase 5: Code Generation
+        std::cout << "Phase 5: Code Generation..." << std::endl;
+        nova::codegen::CCodeGenerator codeGen;
+        auto generatedCode = codeGen.generate(irModule);
+        
+        // Write to default output file
+        std::ofstream outFile(generatedCode.filename);
+        if (!outFile) {
+            std::cerr << "Error: Cannot open output file: " << generatedCode.filename << std::endl;
+            return 1;
+        }
+        outFile << generatedCode.code;
+        outFile.close();
+        std::cout << "  ✓ Code generated to: " << generatedCode.filename << std::endl;
         
         std::cout << "\nCompilation completed successfully!" << std::endl;
         return 0;
@@ -236,12 +262,13 @@ int main(int argc, char* argv[]) {
             semanticOnly = true;
         } else if (arg == "-i" || arg == "--ir") {
             irOnly = true;
+        } else if (arg == "-c" || arg == "--codegen") {
+            codegenOnly = true;
         } else if (arg == "-o" || arg == "--output") {
             if (i + 1 < argc) {
-                // Output file specified (not implemented yet)
-                ++i;
+                outputFile = argv[++i];
             } else {
-                std::cerr << "Error: Missing output file" << std::endl;
+                std::cerr << "Error: --output requires a filename" << std::endl;
                 return 1;
             }
         } else if (arg[0] != '-') {
@@ -277,6 +304,8 @@ int main(int argc, char* argv[]) {
         return runSemantic(source, sourceFile);
     } else if (irOnly) {
         return generateIR(source, sourceFile);
+    } else if (codegenOnly) {
+        return generateCode(source, sourceFile, outputFile);
     } else {
         return compile(source, sourceFile);
     }
@@ -369,6 +398,78 @@ int generateIR(const std::string& source, const std::string& filename) {
         
         std::cout << "\n=== Intermediate Representation ===\n" << std::endl;
         std::cout << irModule->toString() << std::endl;
+        
+        return 0;
+        
+    } catch (const LexerError& e) {
+        std::cerr << "Lexer Error: " << e.what() << std::endl;
+        return 1;
+    } catch (const ParseError& e) {
+        std::cerr << "Parse Error: " << e.what() << std::endl;
+        return 1;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+}
+
+/**
+ * @brief Generate target code
+ */
+int generateCode(const std::string& source, const std::string& filename, const std::string& outputFile) {
+    try {
+        // First, tokenize
+        Lexer lexer(source, filename);
+        std::vector<Token> tokens = lexer.tokenize();
+        
+        // Then parse
+        Parser parser(tokens);
+        auto program = parser.parse();
+        
+        if (parser.hasErrors()) {
+            std::cerr << "\n=== Parse Errors ===\n" << std::endl;
+            for (const auto& error : parser.getErrors()) {
+                std::cerr << "Error: " << error.what() << std::endl;
+            }
+            return 1;
+        }
+        
+        // Semantic analysis
+        SemanticAnalyzer analyzer;
+        if (!analyzer.analyze(program)) {
+            std::cerr << "\n=== Semantic Errors ===\n" << std::endl;
+            for (const auto& error : analyzer.getErrors()) {
+                std::cerr << error.toString() << std::endl;
+            }
+            return 1;
+        }
+        
+        // Generate IR
+        IRGenerator irGen;
+        auto irModule = irGen.generate(program);
+        
+        // Generate target code
+        nova::codegen::CCodeGenerator codeGen;
+        if (!outputFile.empty()) {
+            codeGen.setOutputFile(outputFile);
+        }
+        auto generatedCode = codeGen.generate(irModule);
+        
+        // Write to file or stdout
+        std::string outFile = outputFile.empty() ? generatedCode.filename : outputFile;
+        std::ofstream out(outFile);
+        if (!out) {
+            std::cerr << "Error: Cannot open output file: " << outFile << std::endl;
+            return 1;
+        }
+        out << generatedCode.code;
+        out.close();
+        
+        std::cout << "\n=== Code Generation ===\n" << std::endl;
+        std::cout << "✓ Target: " << generatedCode.language << std::endl;
+        std::cout << "✓ Output: " << outFile << std::endl;
+        std::cout << "\nCompile with: gcc -o " << outFile.substr(0, outFile.find_last_of('.')) 
+                  << " " << outFile << std::endl;
         
         return 0;
         
